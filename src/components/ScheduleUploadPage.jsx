@@ -3,6 +3,7 @@ import { Upload, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react
 import { supabase } from '../lib/supabase';
 import { parseSchedulePDF, convertTimeToMilitary, getDateForDayOfWeek } from '../utils/pdfScheduleParser';
 import { classifyShift } from '../utils/shiftClassifier';
+import * as pdfjsLib from 'pdfjs-dist';
 
 export default function ScheduleUploadPage({ onUploadComplete }) {
   const [dragActive, setDragActive] = useState(false);
@@ -49,14 +50,29 @@ export default function ScheduleUploadPage({ onUploadComplete }) {
   };
 
   const extractTextFromPDF = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const textDecoder = new TextDecoder('utf-8');
-    let text = textDecoder.decode(uint8Array);
+    try {
+      // Set the worker source for pdfjs
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-    text = text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
 
-    return text;
+      let fullText = '';
+
+      // Extract text from all pages
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n';
+      }
+
+      return fullText;
+    } catch (error) {
+      console.error('PDF extraction error:', error);
+      throw new Error('Failed to extract text from PDF: ' + error.message);
+    }
   };
 
   const processSchedule = async () => {
@@ -67,9 +83,13 @@ export default function ScheduleUploadPage({ onUploadComplete }) {
 
     try {
       const pdfText = await extractTextFromPDF(file);
+      console.log('Extracted PDF text:', pdfText.substring(0, 500));
+
       const scheduleData = parseSchedulePDF(pdfText);
+      console.log('Parsed schedule data:', scheduleData);
 
       if (!scheduleData.employees || scheduleData.employees.length === 0) {
+        console.error('No employees found. PDF text was:', pdfText.substring(0, 1000));
         throw new Error('No employee data found in PDF. Please check the file format.');
       }
 
