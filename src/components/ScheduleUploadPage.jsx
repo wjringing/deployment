@@ -60,12 +60,39 @@ export default function ScheduleUploadPage({ onUploadComplete }) {
 
       let fullText = '';
 
-      // Extract text from all pages
+      // Extract text from all pages preserving layout
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + '\n';
+
+        // Sort items by Y position (top to bottom), then X position (left to right)
+        const items = textContent.items.sort((a, b) => {
+          if (Math.abs(a.transform[5] - b.transform[5]) > 5) {
+            return b.transform[5] - a.transform[5]; // Y position (higher Y = top of page)
+          }
+          return a.transform[4] - b.transform[4]; // X position
+        });
+
+        let currentY = null;
+        let line = '';
+
+        items.forEach((item, index) => {
+          const y = Math.round(item.transform[5]);
+
+          // New line if Y position changed significantly
+          if (currentY !== null && Math.abs(currentY - y) > 5) {
+            fullText += line.trim() + '\n';
+            line = '';
+          }
+
+          currentY = y;
+          line += item.str + ' ';
+        });
+
+        // Add last line
+        if (line.trim()) {
+          fullText += line.trim() + '\n';
+        }
       }
 
       return fullText;

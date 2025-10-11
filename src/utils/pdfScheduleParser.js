@@ -12,68 +12,82 @@ export function parseSchedulePDF(pdfText) {
   let currentSection = '';
   const dayHeaders = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+  console.log('Parsing PDF with', lines.length, 'lines');
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    if (line.includes("'s schedule for")) {
-      const match = line.match(/^(.+?)\s+(\d+)'s schedule for/);
+    // Parse location
+    if (line.includes("'s schedule for") || line.includes("schedule for")) {
+      const match = line.match(/^(.+?)\s+(\d+)\s*'?s?\s*schedule for/i);
       if (match) {
         scheduleData.location = match[1].trim();
         scheduleData.locationCode = match[2];
+        console.log('Found location:', scheduleData.location, scheduleData.locationCode);
       }
     }
 
-    if (line.match(/^\w+ \w+ \d+.*\w+ \w+ \d+.*\d{4}$/)) {
-      const dateMatch = line.match(/(\w+ \w+ \d+\w{2}, \d{4})/g);
-      if (dateMatch && dateMatch.length >= 2) {
-        scheduleData.weekStart = parseDateString(dateMatch[0]);
-        scheduleData.weekEnd = parseDateString(dateMatch[1]);
-      }
+    // Parse date range
+    const datePattern = /(\w+\s+\w+\s+\d+\w{0,2},?\s*\d{4})/gi;
+    const dateMatches = line.match(datePattern);
+    if (dateMatches && dateMatches.length >= 2) {
+      scheduleData.weekStart = parseDateString(dateMatches[0]);
+      scheduleData.weekEnd = parseDateString(dateMatches[1]);
+      console.log('Found dates:', scheduleData.weekStart, scheduleData.weekEnd);
     }
 
-    if (line.includes('Shift Runner Deployment') ||
-        line.includes('Team Member Deployment') ||
-        line.includes('Cook Deployment')) {
-      currentSection = line.replace(' Deployment', '').trim();
+    // Detect section headers
+    if (line.match(/Shift Runner|Team Member|Cook/i) && line.match(/Deployment/i)) {
+      currentSection = line.replace(/Deployment/i, '').trim();
+      console.log('Found section:', currentSection);
       continue;
     }
 
-    if (currentSection && !line.includes('Employee') && !dayHeaders.some(day => line.startsWith(day))) {
-      const parts = line.split(/\s{2,}/);
+    // Skip header rows
+    if (line.includes('Employee') || dayHeaders.some(day => line.toLowerCase().includes(day.toLowerCase()) && line.split(' ').length <= 10)) {
+      continue;
+    }
 
-      if (parts.length > 1) {
-        const employeeName = parts[0].trim();
+    // Parse employee data
+    if (currentSection) {
+      // Look for time patterns in the line
+      const timePattern = /\d{1,2}:\d{2}[ap]/g;
+      const times = line.match(timePattern);
 
-        if (employeeName && !employeeName.includes('of October') && employeeName.length > 2) {
+      if (times && times.length >= 2) {
+        // Extract employee name (text before first time)
+        const firstTimeIndex = line.indexOf(times[0]);
+        const employeeName = line.substring(0, firstTimeIndex).trim();
+
+        if (employeeName && employeeName.length > 2 && !employeeName.includes('of ') && !employeeName.match(/^\d/)) {
           const employee = {
             name: employeeName,
             role: currentSection,
             schedule: {}
           };
 
-          for (let j = 0; j < dayHeaders.length && j + 1 < parts.length; j++) {
-            const shiftText = parts[j + 1].trim();
-
-            if (shiftText && shiftText !== '--') {
-              const timeMatch = shiftText.match(/(\d{1,2}:\d{2}[ap])\s*-\s*(\d{1,2}:\d{2}[ap])/);
-
-              if (timeMatch) {
-                employee.schedule[dayHeaders[j]] = {
-                  startTime: timeMatch[1],
-                  endTime: timeMatch[2]
-                };
-              }
+          // Parse all time ranges in the line
+          let dayIndex = 0;
+          for (let t = 0; t < times.length && dayIndex < dayHeaders.length; t += 2) {
+            if (t + 1 < times.length) {
+              employee.schedule[dayHeaders[dayIndex]] = {
+                startTime: times[t],
+                endTime: times[t + 1]
+              };
+              dayIndex++;
             }
           }
 
           if (Object.keys(employee.schedule).length > 0) {
             scheduleData.employees.push(employee);
+            console.log('Added employee:', employee.name, 'with', Object.keys(employee.schedule).length, 'shifts');
           }
         }
       }
     }
   }
 
+  console.log('Total employees parsed:', scheduleData.employees.length);
   return scheduleData;
 }
 
