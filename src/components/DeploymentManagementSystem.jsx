@@ -10,10 +10,11 @@ import DeploymentPage from './DeploymentPage';
 import SettingsPage from './SettingsPage';
 import TargetSettingsPage from './TargetSettingsPage';
 import SalesPage from './SalesPage';
+import ScheduleUploader from './ScheduleUploader';
 import ProtectedPageWrapper from './ProtectedPageWrapper';
 import PasswordProtectedDataProtection from './PasswordProtectedDataProtection';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload } from 'lucide-react';
 
 const DeploymentManagementSystem = ({ onLogout }) => {
   // Supabase data with descriptive aliases to avoid conflicts
@@ -754,8 +755,8 @@ const DeploymentManagementSystem = ({ onLogout }) => {
                 {[
                   { id: 'deployment', label: 'Deployments', icon: Users },
                   { id: 'dragdrop', label: 'Drag & Drop', icon: DragDropIcon },
-                  // PAGE PROTECTION SETTING: Define which navigation items show lock status
-                  { id: 'sales', label: 'Sales Data', icon: TrendingUp },     
+                  { id: 'schedule', label: 'Upload Schedule', icon: Upload },
+                  { id: 'sales', label: 'Sales Data', icon: TrendingUp },
                   { id: 'settings', label: 'Settings', icon: Settings, locked: pageProtectionStatus.settingsLocked },
                   { id: 'targets', label: 'Targets', icon: Target },
                   { id: 'protection', label: 'Data Protection', icon: Shield },
@@ -872,7 +873,11 @@ const DeploymentManagementSystem = ({ onLogout }) => {
             setUiLoading={setUiLoading}
           />
         )}
-        
+
+        {currentPage === 'schedule' && (
+          <ScheduleUploader />
+        )}
+
         {currentPage === 'sales' && (
           <SalesPage
             selectedDate={selectedDate}
