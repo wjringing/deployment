@@ -1,5 +1,6 @@
-import React from 'react';
-import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin, Upload } from 'lucide-react';
+import StaffCsvImporter from './StaffCsvImporter';
 
 const SettingsPage = ({
   supabaseStaff,
@@ -19,8 +20,16 @@ const SettingsPage = ({
   onUpdatePosition,
   onAddTemplateShift,
   onRemoveTemplateShift,
-  onNavigateToTargets
+  onNavigateToTargets,
+  onStaffDataChange
 }) => {
+  const [showCsvImporter, setShowCsvImporter] = useState(false);
+
+  const handleImportComplete = () => {
+    if (onStaffDataChange) {
+      onStaffDataChange();
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -29,13 +38,34 @@ const SettingsPage = ({
         <h2 className="text-3xl font-bold text-gray-900">System Settings</h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Staff Management */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Users className="w-6 h-6 text-blue-600" />
-            <h3 className="text-xl font-semibold text-gray-900">Staff Management</h3>
-          </div>
+      {showCsvImporter ? (
+        <div className="space-y-4">
+          <StaffCsvImporter onImportComplete={handleImportComplete} />
+          <button
+            onClick={() => setShowCsvImporter(false)}
+            className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+          >
+            Back to Settings
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Staff Management */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Users className="w-6 h-6 text-blue-600" />
+                  <h3 className="text-xl font-semibold text-gray-900">Staff Management</h3>
+                </div>
+                <button
+                  onClick={() => setShowCsvImporter(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors text-sm"
+                >
+                  <Upload className="w-4 h-4" />
+                  Import CSV
+                </button>
+              </div>
           
           {/* Add Staff Form */}
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -301,6 +331,8 @@ const SettingsPage = ({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

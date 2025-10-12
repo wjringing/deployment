@@ -930,6 +930,7 @@ const DeploymentManagementSystem = ({ onLogout }) => {
               onAddTemplateShift={handleAddTemplateShift}
               onRemoveTemplateShift={handleRemoveTemplateShift}
               onNavigateToTargets={() => setCurrentPage('targets')}
+              onStaffDataChange={loadAllData}
             />
           </ProtectedPageWrapper>
         )}
