@@ -48,17 +48,25 @@ export function parseSchedulePDF(pdfData) {
 
   console.log('Total rows:', rows.length);
 
-  // Find header row with day columns
+  // Debug: Print first 20 rows
+  console.log('\n=== FIRST 20 ROWS ===');
+  for (let i = 0; i < Math.min(20, rows.length); i++) {
+    const rowText = rows[i].map(item => item.text).join(' ');
+    console.log(`Row ${i}: ${rowText}`);
+  }
+
+  // Find header row with day columns - try multiple patterns
   let dayColumnPositions = [];
   let headerRowIndex = -1;
 
   for (let i = 0; i < rows.length; i++) {
     const rowText = rows[i].map(item => item.text).join(' ');
 
-    // Look for the row with "Monday", "Tuesday", etc. and dates
-    if (rowText.includes('Monday') && rowText.includes('of October')) {
+    // Pattern 1: "Monday 6 of October Tuesday 7 of October..."
+    // Pattern 2: Just "Monday Tuesday Wednesday..."
+    if (rowText.includes('Monday') && (rowText.includes('Tuesday') || rowText.includes('of October'))) {
       headerRowIndex = i;
-      console.log('\nFound day header row:', rowText);
+      console.log('\n✓ Found day header row at index', i, ':', rowText);
 
       const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const dayPositions = {};
@@ -90,6 +98,17 @@ export function parseSchedulePDF(pdfData) {
     }
   }
 
+  if (headerRowIndex === -1) {
+    console.error('ERROR: Could not find day header row');
+    console.log('Looking for rows containing "Monday"...');
+    for (let i = 0; i < rows.length; i++) {
+      const rowText = rows[i].map(item => item.text).join(' ');
+      if (rowText.includes('Monday')) {
+        console.log(`  Row ${i}: ${rowText}`);
+      }
+    }
+  }
+
   // Extract dates from title
   for (let i = 0; i < Math.min(10, rows.length); i++) {
     const rowText = rows[i].map(item => item.text).join(' ');
@@ -118,8 +137,15 @@ export function parseSchedulePDF(pdfData) {
     }
   }
 
+  // If no header row found, return error
+  if (dayColumnPositions.length === 0) {
+    console.error('ERROR: No day columns found');
+    throw new Error('Could not find day column headers in PDF');
+  }
+
   // Find sections and parse employees
   let currentSection = '';
+  let employeeCount = 0;
 
   for (let i = headerRowIndex + 1; i < rows.length; i++) {
     const row = rows[i];
@@ -137,24 +163,20 @@ export function parseSchedulePDF(pdfData) {
       continue;
     }
 
-    // Find employee name (leftmost text item)
-    const firstItem = row[0];
-    let employeeName = firstItem.text;
+    // Find employee name (leftmost text items before first day column)
+    let employeeName = '';
+    const nameItems = [];
 
-    // Collect consecutive text items that are part of the name
-    for (let j = 1; j < row.length; j++) {
-      const item = row[j];
-      if (item.x < (dayColumnPositions[0]?.startX || 100) - 10) {
-        employeeName += ' ' + item.text;
-      } else {
-        break;
+    for (const item of row) {
+      if (item.x < dayColumnPositions[0].startX - 10) {
+        nameItems.push(item.text);
       }
     }
 
-    employeeName = employeeName.trim();
+    employeeName = nameItems.join(' ').trim();
 
     // Skip invalid names
-    if (employeeName.length < 3 || employeeName.match(/^\d/) || employeeName.includes('of ')) {
+    if (employeeName.length < 3 || employeeName.match(/^\d/) || employeeName.includes('of ') || employeeName.includes('Employee')) {
       continue;
     }
 
@@ -186,7 +208,7 @@ export function parseSchedulePDF(pdfData) {
       }
 
       // Extract time range
-      const timeMatch = columnText.match(/(\d{1,2}:\d{2}[ap])\s*-\s*(\d{1,2}:\d{2}[ap])/);
+      const timeMatch = columnText.match(/(\d{1,2}:\d{2}[ap])\s*-?\s*(\d{1,2}:\d{2}[ap])/);
       if (timeMatch) {
         employee.schedule[dayCol.day] = {
           startTime: timeMatch[1],
@@ -201,12 +223,20 @@ export function parseSchedulePDF(pdfData) {
     // Add employee if they have at least one shift
     if (Object.keys(employee.schedule).length > 0) {
       scheduleData.employees.push(employee);
+      employeeCount++;
       console.log(`✓ Added ${employeeName} with ${Object.keys(employee.schedule).length} shifts`);
     }
   }
 
   console.log('\n=== PARSING COMPLETE ===');
   console.log('Total employees parsed:', scheduleData.employees.length);
+
+  if (scheduleData.employees.length === 0) {
+    console.error('ERROR: No employees were parsed');
+    console.log('Current section was:', currentSection);
+    console.log('Header row index:', headerRowIndex);
+    console.log('Total rows:', rows.length);
+  }
 
   return scheduleData;
 }
