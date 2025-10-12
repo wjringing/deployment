@@ -54,26 +54,33 @@ export function parseSchedulePDF(extractedData) {
   const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   let dayColumnPositions = [];
 
-  // Search for day headers - look for "Mon" followed by other days
+  // Search for day headers - they may be standalone (e.g., "Mon") or combined with date (e.g., "Mon 6")
   for (const item of allItems) {
-    if (item.text === 'Mon') {
+    // Check if text starts with a day name (handles both "Mon" and "Mon 6" formats)
+    const startsWithDay = dayHeaders.find(day => item.text.startsWith(day));
+
+    if (startsWithDay) {
       const dayHeaderY = item.y;
 
-      console.log(`Checking Mon at x=${item.x.toFixed(1)}, y=${item.y.toFixed(1)}`);
+      console.log(`Checking "${item.text}" at x=${item.x.toFixed(1)}, y=${item.y.toFixed(1)}`);
 
       // Find all day headers at approximately this Y position
-      const headersAtY = allItems.filter(i =>
-        Math.abs(i.y - dayHeaderY) < 5 &&
-        dayHeaders.includes(i.text)
-      ).sort((a, b) => a.x - b.x);
+      const headersAtY = allItems.filter(i => {
+        const matchesDay = dayHeaders.find(day => i.text.startsWith(day));
+        return Math.abs(i.y - dayHeaderY) < 5 && matchesDay;
+      }).sort((a, b) => a.x - b.x);
 
       console.log(`  Found ${headersAtY.length} day headers:`, headersAtY.map(h => `${h.text}(${h.x.toFixed(1)})`).join(', '));
 
       if (headersAtY.length >= 7) {
-        dayColumnPositions = headersAtY.map(h => ({
-          day: h.text,
-          x: h.x
-        }));
+        dayColumnPositions = headersAtY.map(h => {
+          // Extract just the day name from text like "Mon 6"
+          const day = dayHeaders.find(d => h.text.startsWith(d));
+          return {
+            day: day,
+            x: h.x
+          };
+        });
         console.log('✓ Found day headers:', dayColumnPositions.map(d => `${d.day}@${d.x.toFixed(1)}`).join(', '));
         break;
       }
