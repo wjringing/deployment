@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, FileText, Users, TrendingUp, Calendar, Download } from 'lucide-react';
+import { History, FileText, Users, TrendingUp, Calendar, Download, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function HistoryPage() {
@@ -8,6 +8,7 @@ export default function HistoryPage() {
   const [uploadDetails, setUploadDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
     loadUploadHistory();
@@ -145,6 +146,37 @@ export default function HistoryPage() {
     return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
   };
 
+  const deleteWeek = async (upload) => {
+    try {
+      const { error: deploymentsError } = await supabase
+        .from('shift_deployments')
+        .delete()
+        .eq('week_start_date', upload.week_start_date)
+        .eq('location_id', upload.location_id);
+
+      if (deploymentsError) throw deploymentsError;
+
+      const { error: uploadError } = await supabase
+        .from('schedule_uploads')
+        .delete()
+        .eq('id', upload.id);
+
+      if (uploadError) throw uploadError;
+
+      setUploads(uploads.filter(u => u.id !== upload.id));
+      if (selectedUpload === upload.id) {
+        setSelectedUpload(null);
+        setUploadDetails(null);
+      }
+      setDeleteConfirm(null);
+
+      await loadAnalytics();
+    } catch (error) {
+      console.error('Error deleting week:', error);
+      alert('Failed to delete week. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto p-6">
@@ -264,16 +296,29 @@ export default function HistoryPage() {
               </div>
 
               <div className="p-6">
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Location</div>
-                    <div className="text-gray-800">{uploadDetails.upload.locations?.name}</div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="grid grid-cols-2 gap-4 flex-1">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Location</div>
+                      <div className="text-gray-800">{uploadDetails.upload.locations?.name}</div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Uploaded</div>
+                      <div className="text-gray-800">{formatDateTime(uploadDetails.upload.created_at)}</div>
+                    </div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">Uploaded</div>
-                    <div className="text-gray-800">{formatDateTime(uploadDetails.upload.created_at)}</div>
-                  </div>
+                  <button
+                    onClick={() => setDeleteConfirm(uploadDetails.upload)}
+                    className="ml-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Week
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
 
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-sm font-medium text-gray-600 mb-1">Total Employees</div>
@@ -363,6 +408,53 @@ export default function HistoryPage() {
           )}
         </div>
       </div>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Delete Week</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="text-sm text-gray-700 mb-2">
+                You are about to delete the schedule for:
+              </p>
+              <div className="font-medium text-gray-800">
+                Week of {formatDate(deleteConfirm.week_start_date)}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                {deleteConfirm.locations?.name}
+              </div>
+              <div className="text-sm text-gray-500 mt-2">
+                This will remove {deleteConfirm.total_shifts} shifts for {deleteConfirm.total_employees} employees.
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteWeek(deleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Week
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
