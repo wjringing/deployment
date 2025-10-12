@@ -149,9 +149,15 @@ export function parseSchedulePDF(extractedData) {
   const NAME_COLUMN_MAX_X = 160; // Names are at X≈64, well before day columns start
   let currentSection = '';
 
-  for (let i = headerRowIndex + 1; i < rows.length; i++) {
+  // Process ALL rows, not just after first header (employees can be on any page)
+  for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rowText = row.map(item => item.text).join(' ');
+
+    // Skip day header rows
+    if (rowText.match(/Mon\s+\d+.*Tue\s+\d+.*Wed\s+\d+/)) {
+      continue;
+    }
 
     // Detect section headers
     if (rowText.match(/(Shift Runner|Team Member|Cook)\s+Deployment/i)) {
