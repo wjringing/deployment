@@ -39,13 +39,20 @@ export function parseSchedulePDF(extractedData) {
 
   console.log('Location:', location);
 
+  // Debug: Show items that contain day names to understand the structure
+  console.log('\n=== SEARCHING FOR DAY HEADERS ===');
+  const headerRelatedItems = allItems.filter(i =>
+    i.text.includes('Mon') || i.text.includes('Tue') || i.text.includes('Wed') ||
+    i.text.includes('Employees') || i.text === 'Person'
+  );
+  console.log('Header-related items:');
+  headerRelatedItems.forEach(i =>
+    console.log(`  "${i.text}" at x=${i.x.toFixed(1)}, y=${i.y.toFixed(1)}`)
+  );
+
   // 2. Find the day header row and extract column positions
   const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   let dayColumnPositions = [];
-
-  // Debug: Find all "Mon" occurrences
-  const monItems = allItems.filter(i => i.text === 'Mon');
-  console.log('Found "Mon" at positions:', monItems.map(m => `x=${m.x.toFixed(1)}, y=${m.y.toFixed(1)}`));
 
   // Search for day headers - look for "Mon" followed by other days
   for (const item of allItems) {
