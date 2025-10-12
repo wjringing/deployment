@@ -137,24 +137,9 @@ export function parseSchedulePDF(extractedData) {
   }
 
   // Process ALL rows looking for employee names
-  // Use page number to infer role: pages 2-3 are Team Members, page 1 uses section headers
   const NAME_COLUMN_MAX_X = 160;
 
   console.log('\n\n=== FINDING ALL EMPLOYEES ===');
-
-  // Find section header rows for page 1
-  let shiftRunnerHeaderRow = null;
-  let cookHeaderRow = null;
-  let teamMemberHeaderRow = null;
-
-  for (let i = 0; i < rows.length; i++) {
-    const rowText = rows[i].map(item => item.text).join(' ');
-    if (rowText.includes('Shift Runner Deployment (')) shiftRunnerHeaderRow = i;
-    if (rowText.includes('Cook Deployment (')) cookHeaderRow = i;
-    if (rowText.includes('Team Member Deployment (')) teamMemberHeaderRow = i;
-  }
-
-  console.log(`Section headers: SR=${shiftRunnerHeaderRow}, Cook=${cookHeaderRow}, TM=${teamMemberHeaderRow}`);
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -195,36 +180,17 @@ export function parseSchedulePDF(extractedData) {
 
     if (employeeNames.length === 0) continue;
 
-    // Determine role based on which page and section this row is in
+    // Debug: log found names
     const pageIndex = row[0].pageIndex; // All items in row should have same page
-    let employeeRole = 'Team Member'; // Default
-
-    if (pageIndex === 0) {
-      // Page 1: use section boundaries
-      if (shiftRunnerHeaderRow !== null && i > shiftRunnerHeaderRow &&
-          (cookHeaderRow === null || i < cookHeaderRow)) {
-        employeeRole = 'Shift Runner';
-      } else if (cookHeaderRow !== null && i > cookHeaderRow &&
-                 (teamMemberHeaderRow === null || i < teamMemberHeaderRow)) {
-        employeeRole = 'Cook';
-      } else if (teamMemberHeaderRow !== null && i > teamMemberHeaderRow) {
-        employeeRole = 'Team Member';
-      }
-    } else {
-      // Pages 2-3: all Team Members
-      employeeRole = 'Team Member';
-    }
-
-    // Debug: log found names with their role
-    console.log(`Row ${i} (page ${pageIndex + 1}): Found ${employeeRole}(s): ${employeeNames.join(', ')}`);
+    console.log(`Row ${i} (page ${pageIndex + 1}): Found employee(s): ${employeeNames.join(', ')}`);
 
     // For each employee name found, look ahead for their shifts
     for (const empName of employeeNames) {
-      console.log(`\n→ Processing: ${empName} (${employeeRole})`);
+      console.log(`\n→ Processing: ${empName}`);
 
       const employee = {
         name: empName,
-        role: employeeRole,
+        role: null, // Role will be managed separately in the app
         schedule: {}
       };
 
