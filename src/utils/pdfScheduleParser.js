@@ -128,8 +128,17 @@ export function parseSchedulePDF(extractedData) {
   const employees = [];
   const Y_SEARCH_RANGE = 20; // Search ±20 pixels from name's Y position (tighter to avoid overlap)
 
+  // Add debug for first few employees
+  const debugEmployees = ['Callum Nurse', 'Lili Martland', 'Nicole Chidlow'];
+
   for (const empItem of employeeItems) {
-    console.log(`\n→ Processing: ${empItem.name}`);
+    const isDebug = debugEmployees.includes(empItem.name);
+
+    if (!isDebug) {
+      console.log(`\n→ Processing: ${empItem.name}`);
+    } else {
+      console.log(`\n→ DEBUG ${empItem.name} at Y=${empItem.y.toFixed(1)} (page ${empItem.pageIndex + 1})`);
+    }
 
     const employee = {
       name: empItem.name,
@@ -156,6 +165,13 @@ export function parseSchedulePDF(extractedData) {
         item.pageIndex === empItem.pageIndex // Same page (employees don't span pages in this layout)
       );
 
+      if (isDebug && columnItems.length > 0) {
+        console.log(`  ${dayName} (x=${dayCol.x.toFixed(1)}, width=${COLUMN_WIDTH.toFixed(1)}):`);
+        columnItems.forEach(item => {
+          console.log(`    y=${item.y.toFixed(1)} (Δ${(item.y - empItem.y).toFixed(1)}): "${item.text}"`);
+        });
+      }
+
       // Combine text from this column area
       const columnText = columnItems
         .sort((a, b) => a.y - b.y)
@@ -163,6 +179,10 @@ export function parseSchedulePDF(extractedData) {
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
+
+      if (isDebug && columnText) {
+        console.log(`    → Combined: "${columnText}"`);
+      }
 
       if (!columnText || columnText.length < 3) continue;
 
