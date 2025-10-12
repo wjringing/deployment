@@ -128,8 +128,8 @@ export function parseSchedulePDF(extractedData) {
   const employees = [];
   const Y_SEARCH_RANGE = 20; // Search ±20 pixels from name's Y position
 
-  // Disable debug logging
-  const debugEmployees = [];
+  // Debug specific employees
+  const debugEmployees = ['Dylan Morris'];
 
   for (const empItem of employeeItems) {
     const isDebug = debugEmployees.includes(empItem.name);
