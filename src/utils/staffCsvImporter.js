@@ -133,8 +133,7 @@ export async function validateStaffRecords(records) {
   try {
     const { data: existingStaff, error } = await supabase
       .from('staff')
-      .select('name')
-      .in('name', records.map(r => r.name));
+      .select('name');
 
     if (error) {
       validationResults.errors.push(`Database error: ${error.message}`);
@@ -142,7 +141,7 @@ export async function validateStaffRecords(records) {
     }
 
     const existingNames = new Set(
-      existingStaff.map(s => s.name.toLowerCase())
+      (existingStaff || []).map(s => s.name.toLowerCase())
     );
 
     records.forEach(record => {
@@ -179,7 +178,7 @@ export async function importStaffRecords(records, options = {}) {
       for (const record of records) {
         const { data: existing, error: fetchError } = await supabase
           .from('staff')
-          .select('id')
+          .select('id, name')
           .ilike('name', record.name)
           .maybeSingle();
 
@@ -189,10 +188,14 @@ export async function importStaffRecords(records, options = {}) {
         }
 
         if (existing) {
-          const { error: updateError } = await supabase
+          const { data: updated, error: updateError } = await supabase
             .from('staff')
-            .update({ is_under_18: record.is_under_18 })
-            .eq('id', existing.id);
+            .update({
+              is_under_18: record.is_under_18,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id)
+            .select();
 
           if (updateError) {
             results.failed.push({ record, error: updateError.message });
@@ -200,9 +203,13 @@ export async function importStaffRecords(records, options = {}) {
             results.updated.push(record);
           }
         } else {
-          const { error: insertError } = await supabase
+          const { data: inserted, error: insertError } = await supabase
             .from('staff')
-            .insert([record]);
+            .insert([{
+              name: record.name,
+              is_under_18: record.is_under_18
+            }])
+            .select();
 
           if (insertError) {
             results.failed.push({ record, error: insertError.message });
@@ -212,9 +219,14 @@ export async function importStaffRecords(records, options = {}) {
         }
       }
     } else {
+      const cleanRecords = records.map(r => ({
+        name: r.name,
+        is_under_18: r.is_under_18
+      }));
+
       const { data, error } = await supabase
         .from('staff')
-        .insert(records)
+        .insert(cleanRecords)
         .select();
 
       if (error) {
@@ -227,7 +239,7 @@ export async function importStaffRecords(records, options = {}) {
           results.failed.push({ record: 'batch', error: error.message });
         }
       } else {
-        results.success = data;
+        results.success = data || [];
       }
     }
   } catch (error) {
