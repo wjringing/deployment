@@ -1,4 +1,3 @@
-// New simpler approach: look for role labels in rows after each name
 export function parseSchedulePDF(extractedData) {
   const scheduleData = {
     location: '',
@@ -79,7 +78,8 @@ export function parseSchedulePDF(extractedData) {
 
   console.log('Location:', scheduleData.location);
 
-  // Find day column headers
+  // Step 1: Find ALL section headers with their day columns
+  const sections = [];
   const dayMap = {
     'Mon': 'Monday',
     'Tue': 'Tuesday',
@@ -90,124 +90,132 @@ export function parseSchedulePDF(extractedData) {
     'Sun': 'Sunday'
   };
 
-  let dayColumnPositions = [];
   for (let i = 0; i < rows.length; i++) {
     const rowText = rows[i].map(item => item.text).join(' ');
-    if (rowText.match(/Mon\s+\d+.*Tue\s+\d+.*Wed\s+\d+/)) {
-      console.log(`\n✓ Found day header row at index ${i}`);
 
-      const dayPositions = {};
-      rows[i].forEach(item => {
-        for (const [abbr, fullName] of Object.entries(dayMap)) {
-          if (item.text.startsWith(abbr + ' ') && !dayPositions[fullName]) {
-            dayPositions[fullName] = item.x;
+    // Look for section headers with day columns
+    if (rowText.match(/(Shift Runner|Team Member|Cook)\s+Deployment.*Mon\s+\d+.*Tue\s+\d+/i)) {
+      const sectionMatch = rowText.match(/(Shift Runner|Team Member|Cook)\s+Deployment/i);
+      if (sectionMatch) {
+        const sectionType = sectionMatch[1];
+
+        // Find day positions for this section
+        const dayPositions = {};
+        rows[i].forEach(item => {
+          for (const [abbr, fullName] of Object.entries(dayMap)) {
+            if (item.text.startsWith(abbr + ' ') && !dayPositions[fullName]) {
+              dayPositions[fullName] = item.x;
+            }
+          }
+        });
+
+        // Build column boundaries
+        const dayColumnPositions = [];
+        const sortedDays = Object.values(dayMap).filter(day => dayPositions[day]);
+        for (let j = 0; j < sortedDays.length; j++) {
+          const day = sortedDays[j];
+          const startX = dayPositions[day];
+          const endX = j < sortedDays.length - 1 ? dayPositions[sortedDays[j + 1]] : 9999;
+          dayColumnPositions.push({ day, startX, endX });
+        }
+
+        sections.push({
+          type: sectionType,
+          headerRowIndex: i,
+          dayColumnPositions
+        });
+
+        console.log(`\n✓ Found section: ${sectionType} at row ${i}`);
+
+        // Extract week dates from first section only
+        if (sections.length === 1) {
+          const mondayDateMatch = rowText.match(/Mon\s+(\d+)/);
+          if (mondayDateMatch) {
+            const mondayDay = parseInt(mondayDateMatch[1]);
+            scheduleData.weekStart = new Date(2025, 9, mondayDay);
+
+            const sundayDateMatch = rowText.match(/Sun\s+(\d+)/);
+            if (sundayDateMatch) {
+              const sundayDay = parseInt(sundayDateMatch[1]);
+              scheduleData.weekEnd = new Date(2025, 9, sundayDay);
+            }
           }
         }
-      });
+      }
+    }
+  }
 
-      // Extract week dates
-      const mondayDateMatch = rowText.match(/Mon\s+(\d+)/);
-      if (mondayDateMatch) {
-        const mondayDay = parseInt(mondayDateMatch[1]);
-        scheduleData.weekStart = new Date(2025, 9, mondayDay);
+  if (sections.length === 0) {
+    throw new Error('Could not find any section headers in PDF');
+  }
 
-        const sundayDateMatch = rowText.match(/Sun\s+(\d+)/);
-        if (sundayDateMatch) {
-          const sundayDay = parseInt(sundayDateMatch[1]);
-          scheduleData.weekEnd = new Date(2025, 9, sundayDay);
+  console.log(`\nFound ${sections.length} sections:`, sections.map(s => s.type).join(', '));
+
+  // Step 2: Find ALL employees by processing each section's range
+  const NAME_COLUMN_MAX_X = 160;
+  const dayColumnPositions = sections[0].dayColumnPositions;
+
+  console.log('\n\n=== FINDING ALL EMPLOYEES BY SECTION ===');
+
+  // For each section, find employees between this section header and the next
+  for (let sectionIdx = 0; sectionIdx < sections.length; sectionIdx++) {
+    const section = sections[sectionIdx];
+    const nextSectionIdx = sectionIdx + 1 < sections.length ? sections[sectionIdx + 1].headerRowIndex : rows.length;
+
+    console.log(`\n=== Processing ${section.type} section (rows ${section.headerRowIndex}-${nextSectionIdx - 1}) ===`);
+
+    // Process rows between this section header and the next
+    for (let i = section.headerRowIndex + 1; i < nextSectionIdx; i++) {
+      const row = rows[i];
+      const rowText = row.map(item => item.text).join(' ');
+
+      // Skip non-content rows
+      if (rowText.includes('Unassigned') ||
+          rowText.includes('Position then') ||
+          rowText.match(/Mon\s+\d+.*Tue\s+\d+/)) {
+        continue;
+      }
+
+      // Find employee names in left column (X < 160)
+      const nameItems = row.filter(item =>
+        item.x < NAME_COLUMN_MAX_X &&
+        item.text.trim().length > 0 &&
+        !item.text.match(/^[\d\s\(\)\-]+$/) && // Skip pure numbers/symbols
+        !item.text.match(/Deployment/i)
+      );
+
+      if (nameItems.length === 0) continue;
+
+      // Extract employee names (may be multiple on same row)
+      const employeeNames = [];
+
+      for (const item of nameItems) {
+        const text = item.text.trim();
+        // Skip role labels
+        if (text.match(/Shift Runner|Team Member|Cook|Deployment/i)) continue;
+        if (text.length < 3) continue;
+
+        // Check if this looks like a name (has letters)
+        if (text.match(/[A-Za-z]{2,}/)) {
+          employeeNames.push(text);
         }
       }
 
-      // Build column boundaries
-      const sortedDays = Object.values(dayMap).filter(day => dayPositions[day]);
-      for (let j = 0; j < sortedDays.length; j++) {
-        const day = sortedDays[j];
-        const startX = dayPositions[day];
-        const endX = j < sortedDays.length - 1 ? dayPositions[sortedDays[j + 1]] : 9999;
-        dayColumnPositions.push({ day, startX, endX });
-      }
+      if (employeeNames.length === 0) continue;
 
-      console.log('Day columns detected:', dayColumnPositions.length);
-      break; // Use first header found
-    }
-  }
+      // Debug: log found names with their role
+      console.log(`Row ${i}: Found ${section.type}(s): ${employeeNames.join(', ')}`);
 
-  if (dayColumnPositions.length === 0) {
-    throw new Error('Could not find day column headers in PDF');
-  }
+      // For each employee name found, look ahead for their shifts
+      for (const empName of employeeNames) {
+        console.log(`\n→ Processing: ${empName} (${section.type})`);
 
-  // Process ALL rows looking for employee names and their role labels
-  const NAME_COLUMN_MAX_X = 160;
-
-  console.log('\n\n=== FINDING ALL EMPLOYEES ===');
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const rowText = row.map(item => item.text).join(' ');
-
-    // Skip section headers and non-content rows
-    if (rowText.includes('Unassigned') ||
-        rowText.includes('Position then') ||
-        rowText.match(/Mon\s+\d+.*Tue\s+\d+/)) {
-      continue;
-    }
-
-    // Find employee names in left column (X < 160)
-    const nameItems = row.filter(item =>
-      item.x < NAME_COLUMN_MAX_X &&
-      item.text.trim().length > 0 &&
-      !item.text.match(/^[\d\s\(\)\-]+$/) && // Skip pure numbers/symbols
-      !item.text.match(/Deployment/i)
-    );
-
-    if (nameItems.length === 0) continue;
-
-    // Extract employee names (may be multiple on same row)
-    const employeeNames = [];
-
-    for (const item of nameItems) {
-      const text = item.text.trim();
-      // Skip role labels
-      if (text.match(/Shift Runner|Team Member|Cook|Deployment/i)) continue;
-      if (text.length < 3) continue;
-
-      // Check if this looks like a name (has letters)
-      if (text.match(/[A-Za-z]{2,}/)) {
-        employeeNames.push(text);
-      }
-    }
-
-    if (employeeNames.length === 0) continue;
-
-    // Look in the next 3 rows for role labels
-    let employeeRole = 'Team Member'; // Default
-    for (let lookAhead = 1; lookAhead <= 3 && (i + lookAhead) < rows.length; lookAhead++) {
-      const nextRowText = rows[i + lookAhead].map(item => item.text).join(' ');
-
-      if (nextRowText.includes('Shift Runner Deployment')) {
-        employeeRole = 'Shift Runner';
-        break;
-      } else if (nextRowText.includes('Cook Deployment')) {
-        employeeRole = 'Cook';
-        break;
-      } else if (nextRowText.includes('Team Member Deployment')) {
-        employeeRole = 'Team Member';
-        break;
-      }
-    }
-
-    // Debug: log found names with their role
-    console.log(`Row ${i}: Found ${employeeRole}(s): ${employeeNames.join(', ')}`);
-
-    // For each employee name found, look ahead for their shifts
-    for (const empName of employeeNames) {
-      console.log(`\n→ Processing: ${empName} (${employeeRole})`);
-
-      const employee = {
-        name: empName,
-        role: employeeRole,
-        schedule: {}
-      };
+        const employee = {
+          name: empName,
+          role: section.type,
+          schedule: {},
+          sourceRowIndex: i
+        };
 
       let hasAnyShift = false;
 
@@ -315,7 +323,8 @@ export function parseSchedulePDF(extractedData) {
         console.log(`✗ Skipped ${empName} (no shifts found)`);
       }
     }
-  }
+    }  // End of row loop (i loop)
+  }  // End of section loop
 
   console.log('\n=== PARSING COMPLETE ===');
   console.log(`Total employees: ${scheduleData.employees.length}`);
