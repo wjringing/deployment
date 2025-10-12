@@ -149,8 +149,16 @@ export function parseSchedulePDF(extractedData) {
         item.x >= dayCol.x - 10 &&
         item.x <= dayCol.x + COLUMN_WIDTH &&
         Math.abs(item.y - empItem.y) <= Y_SEARCH_RANGE &&
-        item.pageIndex === empItem.pageIndex // Same page
+        item.pageIndex === empItem.pageIndex // Same page (employees don't span pages in this layout)
       );
+
+      // Debug first employee to see what's happening
+      if (empItem.name === 'Callum Nurse' && dayName === 'Fri') {
+        console.log(`  DEBUG ${dayName}: empItem.y=${empItem.y.toFixed(1)}, dayCol.x=${dayCol.x.toFixed(1)}`);
+        console.log(`  Column items:`, columnItems.map(i =>
+          `"${i.text}" at x=${i.x.toFixed(1)}, y=${i.y.toFixed(1)}`
+        ));
+      }
 
       // Combine text from this column area
       const columnText = columnItems
