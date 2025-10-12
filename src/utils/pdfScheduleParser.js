@@ -1,6 +1,4 @@
-export function parseSchedulePDF(pdfText) {
-  const lines = pdfText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
+export function parseSchedulePDF(pdfData) {
   const scheduleData = {
     location: '',
     locationCode: '',
@@ -9,111 +7,207 @@ export function parseSchedulePDF(pdfText) {
     employees: []
   };
 
-  let currentSection = '';
-  const dayHeaders = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  let dayColumnDates = {};
+  if (!pdfData.pages || pdfData.pages.length === 0) {
+    throw new Error('No pages found in PDF');
+  }
 
-  console.log('Parsing PDF with', lines.length, 'lines');
+  const page = pdfData.pages[0];
+  const items = page.items;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  console.log('=== POSITION-BASED PDF PARSER ===');
+  console.log('Page size:', page.width, 'x', page.height);
+  console.log('Total items:', items.length);
 
-    if (line.includes("'s schedule for") || line.includes("schedule for")) {
-      const match = line.match(/^(.+?)\s+(\d+)\s*'?s?\s*schedule for/i);
+  // Group items by Y position (rows)
+  const rows = [];
+  let currentRow = [];
+  let currentY = null;
+
+  const sortedItems = [...items].sort((a, b) => {
+    if (Math.abs(a.y - b.y) > 3) {
+      return a.y - b.y;
+    }
+    return a.x - b.x;
+  });
+
+  sortedItems.forEach(item => {
+    if (currentY === null || Math.abs(item.y - currentY) > 3) {
+      if (currentRow.length > 0) {
+        rows.push(currentRow);
+      }
+      currentRow = [item];
+      currentY = item.y;
+    } else {
+      currentRow.push(item);
+    }
+  });
+
+  if (currentRow.length > 0) {
+    rows.push(currentRow);
+  }
+
+  console.log('Total rows:', rows.length);
+
+  // Find header row with day columns
+  let dayColumnPositions = [];
+  let headerRowIndex = -1;
+
+  for (let i = 0; i < rows.length; i++) {
+    const rowText = rows[i].map(item => item.text).join(' ');
+
+    // Look for the row with "Monday", "Tuesday", etc. and dates
+    if (rowText.includes('Monday') && rowText.includes('of October')) {
+      headerRowIndex = i;
+      console.log('\nFound day header row:', rowText);
+
+      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const dayPositions = {};
+
+      rows[i].forEach(item => {
+        const matchedDay = dayNames.find(day => item.text === day);
+        if (matchedDay && !dayPositions[matchedDay]) {
+          dayPositions[matchedDay] = item.x;
+          console.log(`  ${matchedDay} at X=${item.x}`);
+        }
+      });
+
+      // Build column boundaries
+      const sortedDays = dayNames.filter(day => dayPositions[day]);
+      for (let j = 0; j < sortedDays.length; j++) {
+        const day = sortedDays[j];
+        const startX = dayPositions[day];
+        const endX = j < sortedDays.length - 1 ? dayPositions[sortedDays[j + 1]] : page.width;
+        dayColumnPositions.push({
+          day,
+          startX,
+          endX,
+          centerX: startX + (endX - startX) / 2
+        });
+      }
+
+      console.log('Day columns:', dayColumnPositions);
+      break;
+    }
+  }
+
+  // Extract dates from title
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    const rowText = rows[i].map(item => item.text).join(' ');
+
+    if (rowText.includes("'s schedule for") || rowText.includes('schedule for')) {
+      const match = rowText.match(/(.+?)\s+(\d+)\s*'?s?\s*schedule for/i);
       if (match) {
         scheduleData.location = match[1].trim();
         scheduleData.locationCode = match[2];
-        console.log('Found location:', scheduleData.location, scheduleData.locationCode);
+        console.log('Location:', scheduleData.location, scheduleData.locationCode);
       }
     }
 
     const datePattern = /(\w+\s+\w+\s+\d+\w{0,2},?\s*\d{4})/gi;
-    const dateMatches = line.match(datePattern);
+    const dateMatches = rowText.match(datePattern);
     if (dateMatches && dateMatches.length >= 2) {
-      scheduleData.weekStart = parseDateString(dateMatches[0]);
-      scheduleData.weekEnd = parseDateString(dateMatches[1]);
-      console.log('Found dates from title:', scheduleData.weekStart, scheduleData.weekEnd);
-    }
-
-    if (line.match(/Monday\s+\d+\s+of\s+October/i)) {
-      const dayDatePattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d+)\s+of\s+\w+/gi;
-      let match;
-      while ((match = dayDatePattern.exec(line)) !== null) {
-        const dayName = match[1];
-        const dayDate = parseInt(match[2]);
-        dayColumnDates[dayName] = dayDate;
-        console.log(`Found column header: ${dayName} = ${dayDate}`);
+      const startDate = parseDateString(dateMatches[0]);
+      const mondayDateMatch = dateMatches[0].match(/\w+\s+\w+\s+(\d+)/);
+      if (mondayDateMatch) {
+        const mondayDay = parseInt(mondayDateMatch[1]);
+        scheduleData.weekStart = new Date(startDate.getFullYear(), startDate.getMonth(), mondayDay);
+        scheduleData.weekEnd = parseDateString(dateMatches[1]);
+        console.log('Week:', scheduleData.weekStart.toISOString().split('T')[0], 'to', scheduleData.weekEnd.toISOString().split('T')[0]);
       }
-
-      if (Object.keys(dayColumnDates).length > 0) {
-        const mondayDate = dayColumnDates['Monday'];
-        if (mondayDate && scheduleData.weekStart) {
-          const year = scheduleData.weekStart.getFullYear();
-          const month = scheduleData.weekStart.getMonth();
-          scheduleData.weekStart = new Date(year, month, mondayDate);
-          console.log('Corrected week start to:', scheduleData.weekStart);
-        }
-      }
-      continue;
-    }
-
-    if (line.match(/Shift Runner|Team Member|Cook/i) && line.match(/Deployment/i)) {
-      currentSection = line.replace(/Deployment/i, '').trim();
-      console.log('Found section:', currentSection);
-      continue;
-    }
-
-    if (line.includes('Employee') || line.includes('of October')) {
-      continue;
-    }
-
-    if (currentSection) {
-      const timePattern = /(\d{1,2}:\d{2}[ap])\s*-\s*(\d{1,2}:\d{2}[ap])/g;
-      const shiftMatches = [];
-      let match;
-
-      while ((match = timePattern.exec(line)) !== null) {
-        shiftMatches.push({
-          start: match[1],
-          end: match[2],
-          fullMatch: match[0]
-        });
-      }
-
-      if (shiftMatches.length > 0) {
-        const firstShiftIndex = line.indexOf(shiftMatches[0].fullMatch);
-        const employeeName = line.substring(0, firstShiftIndex).trim();
-
-        if (employeeName && employeeName.length > 2 && !employeeName.match(/^\d/) && !employeeName.includes('of ')) {
-          const employee = {
-            name: employeeName,
-            role: currentSection,
-            schedule: {}
-          };
-
-          let remainingLine = line;
-          let dayIndex = 0;
-
-          for (const shift of shiftMatches) {
-            if (dayIndex < dayHeaders.length) {
-              employee.schedule[dayHeaders[dayIndex]] = {
-                startTime: shift.start,
-                endTime: shift.end
-              };
-              dayIndex++;
-            }
-          }
-
-          if (Object.keys(employee.schedule).length > 0) {
-            scheduleData.employees.push(employee);
-            console.log('Added employee:', employee.name, 'with', Object.keys(employee.schedule).length, 'shifts');
-          }
-        }
-      }
+      break;
     }
   }
 
+  // Find sections and parse employees
+  let currentSection = '';
+
+  for (let i = headerRowIndex + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const rowText = row.map(item => item.text).join(' ');
+
+    // Check for section headers
+    if (rowText.match(/Shift Runner|Team Member|Cook/i) && rowText.match(/Deployment/i)) {
+      currentSection = rowText.replace(/Deployment/i, '').trim();
+      console.log('\n--- Section:', currentSection, '---');
+      continue;
+    }
+
+    // Skip non-employee rows
+    if (!currentSection || rowText.length < 3) {
+      continue;
+    }
+
+    // Find employee name (leftmost text item)
+    const firstItem = row[0];
+    let employeeName = firstItem.text;
+
+    // Collect consecutive text items that are part of the name
+    for (let j = 1; j < row.length; j++) {
+      const item = row[j];
+      if (item.x < (dayColumnPositions[0]?.startX || 100) - 10) {
+        employeeName += ' ' + item.text;
+      } else {
+        break;
+      }
+    }
+
+    employeeName = employeeName.trim();
+
+    // Skip invalid names
+    if (employeeName.length < 3 || employeeName.match(/^\d/) || employeeName.includes('of ')) {
+      continue;
+    }
+
+    const employee = {
+      name: employeeName,
+      role: currentSection,
+      schedule: {}
+    };
+
+    console.log(`\nEmployee: ${employeeName}`);
+
+    // Map items to day columns
+    for (const dayCol of dayColumnPositions) {
+      const itemsInColumn = row.filter(item =>
+        item.x >= dayCol.startX - 10 && item.x < dayCol.endX
+      );
+
+      if (itemsInColumn.length === 0) {
+        console.log(`  ${dayCol.day}: OFF (no data)`);
+        continue;
+      }
+
+      const columnText = itemsInColumn.map(i => i.text).join('');
+
+      // Check for OFF indicator
+      if (columnText.includes('--') || columnText.trim() === '') {
+        console.log(`  ${dayCol.day}: OFF`);
+        continue;
+      }
+
+      // Extract time range
+      const timeMatch = columnText.match(/(\d{1,2}:\d{2}[ap])\s*-\s*(\d{1,2}:\d{2}[ap])/);
+      if (timeMatch) {
+        employee.schedule[dayCol.day] = {
+          startTime: timeMatch[1],
+          endTime: timeMatch[2]
+        };
+        console.log(`  ${dayCol.day}: ${timeMatch[1]} - ${timeMatch[2]}`);
+      } else {
+        console.log(`  ${dayCol.day}: Could not parse "${columnText}"`);
+      }
+    }
+
+    // Add employee if they have at least one shift
+    if (Object.keys(employee.schedule).length > 0) {
+      scheduleData.employees.push(employee);
+      console.log(`✓ Added ${employeeName} with ${Object.keys(employee.schedule).length} shifts`);
+    }
+  }
+
+  console.log('\n=== PARSING COMPLETE ===');
   console.log('Total employees parsed:', scheduleData.employees.length);
+
   return scheduleData;
 }
 

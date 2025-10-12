@@ -51,51 +51,36 @@ export default function ScheduleUploadPage({ onUploadComplete }) {
 
   const extractTextFromPDF = async (file) => {
     try {
-      // Set the worker source for pdfjs
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
       const arrayBuffer = await file.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
 
-      let fullText = '';
+      const structuredData = { pages: [] };
 
-      // Extract text from all pages preserving layout
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
+        const viewport = page.getViewport({ scale: 1.0 });
 
-        // Sort items by Y position (top to bottom), then X position (left to right)
-        const items = textContent.items.sort((a, b) => {
-          if (Math.abs(a.transform[5] - b.transform[5]) > 5) {
-            return b.transform[5] - a.transform[5]; // Y position (higher Y = top of page)
-          }
-          return a.transform[4] - b.transform[4]; // X position
-        });
+        const pageData = {
+          pageNum,
+          width: viewport.width,
+          height: viewport.height,
+          items: textContent.items.map(item => ({
+            text: item.str,
+            x: item.transform[4],
+            y: viewport.height - item.transform[5],
+            width: item.width,
+            height: item.height
+          }))
+        };
 
-        let currentY = null;
-        let line = '';
-
-        items.forEach((item, index) => {
-          const y = Math.round(item.transform[5]);
-
-          // New line if Y position changed significantly
-          if (currentY !== null && Math.abs(currentY - y) > 5) {
-            fullText += line.trim() + '\n';
-            line = '';
-          }
-
-          currentY = y;
-          line += item.str + ' ';
-        });
-
-        // Add last line
-        if (line.trim()) {
-          fullText += line.trim() + '\n';
-        }
+        structuredData.pages.push(pageData);
       }
 
-      return fullText;
+      return structuredData;
     } catch (error) {
       console.error('PDF extraction error:', error);
       throw new Error('Failed to extract text from PDF: ' + error.message);
@@ -109,14 +94,14 @@ export default function ScheduleUploadPage({ onUploadComplete }) {
     setUploadStatus({ type: 'info', message: 'Processing PDF...' });
 
     try {
-      const pdfText = await extractTextFromPDF(file);
-      console.log('Extracted PDF text:', pdfText.substring(0, 500));
+      const pdfData = await extractTextFromPDF(file);
+      console.log('Extracted PDF data:', pdfData);
 
-      const scheduleData = parseSchedulePDF(pdfText);
+      const scheduleData = parseSchedulePDF(pdfData);
       console.log('Parsed schedule data:', scheduleData);
 
       if (!scheduleData.employees || scheduleData.employees.length === 0) {
-        console.error('No employees found. PDF text was:', pdfText.substring(0, 1000));
+        console.error('No employees found in PDF');
         throw new Error('No employee data found in PDF. Please check the file format.');
       }
 
