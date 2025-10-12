@@ -106,11 +106,13 @@ export function parseSchedulePDF(pdfData) {
       });
 
       // Find day positions and extract dates
+      // Text items are like "Mon 6", "Tue 7", etc.
       rows[i].forEach(item => {
         for (const [abbr, fullName] of Object.entries(dayMap)) {
-          if (item.text === abbr && !dayPositions[fullName]) {
+          // Match "Mon 6", "Tue 7", etc. (day abbreviation followed by space and number)
+          if (item.text.startsWith(abbr + ' ') && !dayPositions[fullName]) {
             dayPositions[fullName] = item.x;
-            console.log(`  ✓ ${fullName} at X=${item.x}`);
+            console.log(`  ✓ ${fullName} at X=${item.x} (from "${item.text}")`);
           }
         }
       });
