@@ -131,6 +131,21 @@ export function parseSchedulePDF(extractedData) {
   // Debug specific employees
   const debugEmployees = ['Nicole Chidlow'];
 
+  // Special debug: find "11:30" text near Nicole
+  const nicoleItem = employeeItems.find(e => e.name === 'Nicole Chidlow');
+  if (nicoleItem) {
+    console.log('\n=== SEARCHING FOR 11:30 NEAR NICOLE ===');
+    const nearbyItems = allItems.filter(item =>
+      item.text.includes('11:30') &&
+      item.pageIndex === nicoleItem.pageIndex &&
+      Math.abs(item.y - nicoleItem.y) <= 50
+    );
+    console.log(`Found ${nearbyItems.length} items with "11:30":`);
+    nearbyItems.forEach(item => {
+      console.log(`  x=${item.x.toFixed(1)}, y=${item.y.toFixed(1)} (Δ${(item.y - nicoleItem.y).toFixed(1)}): "${item.text}"`);
+    });
+  }
+
   for (const empItem of employeeItems) {
     const isDebug = debugEmployees.includes(empItem.name);
 
