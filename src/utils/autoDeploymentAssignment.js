@@ -131,22 +131,6 @@ async function createDeployment(shift, shiftType, shiftDate) {
       return null;
     }
 
-    const { count: deploymentCount, error: countError } = await supabase
-      .from('deployments')
-      .select('*', { count: 'exact', head: true })
-      .eq('date', shiftDate)
-      .eq('shift_type', shiftType);
-
-    if (countError) {
-      console.error('Error checking deployment count:', countError);
-      return null;
-    }
-
-    if (deploymentCount >= 2) {
-      console.warn(`Maximum deployments reached for ${shiftType} on ${shiftDate}`);
-      return null;
-    }
-
     const { data: deployment, error } = await supabase
       .from('deployments')
       .insert({
