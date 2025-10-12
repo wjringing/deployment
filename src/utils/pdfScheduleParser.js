@@ -103,8 +103,8 @@ export function parseSchedulePDF(extractedData) {
     // Must be in left column
     if (item.x >= NAME_COLUMN_MAX_X) continue;
 
-    // Must look like a name (capitalized words)
-    if (!text.match(/[A-Z][a-z]+/)) continue;
+    // Must look like a name (capitalized words, including all-caps like "KATE SMITH")
+    if (!text.match(/[A-Z]/)) continue;
     if (text.match(/^[\d\s\(\)\-]+$/)) continue;
     if (text.length < 3) continue;
 
@@ -126,7 +126,7 @@ export function parseSchedulePDF(extractedData) {
 
   // 4. For each employee, find their shifts by looking for times near their Y-coordinate
   const employees = [];
-  const Y_SEARCH_RANGE = 30; // Search ±30 pixels from name's Y position
+  const Y_SEARCH_RANGE = 20; // Search ±20 pixels from name's Y position (tighter to avoid overlap)
 
   for (const empItem of employeeItems) {
     console.log(`\n→ Processing: ${empItem.name}`);
@@ -144,21 +144,17 @@ export function parseSchedulePDF(extractedData) {
       const dayName = dayCol.day;
 
       // Find all text items in this column's X range and near employee's Y
-      const COLUMN_WIDTH = 100; // Width of each day column
+      // Calculate column width as distance to next column (or 85 pixels for last column)
+      const nextColIndex = dayColumnPositions.indexOf(dayCol) + 1;
+      const COLUMN_WIDTH = nextColIndex < dayColumnPositions.length
+        ? (dayColumnPositions[nextColIndex].x - dayCol.x - 5) // 5px buffer
+        : 85; // Default for last column
       const columnItems = allItems.filter(item =>
         item.x >= dayCol.x - 10 &&
         item.x <= dayCol.x + COLUMN_WIDTH &&
         Math.abs(item.y - empItem.y) <= Y_SEARCH_RANGE &&
         item.pageIndex === empItem.pageIndex // Same page (employees don't span pages in this layout)
       );
-
-      // Debug first employee to see what's happening
-      if (empItem.name === 'Callum Nurse' && dayName === 'Fri') {
-        console.log(`  DEBUG ${dayName}: empItem.y=${empItem.y.toFixed(1)}, dayCol.x=${dayCol.x.toFixed(1)}`);
-        console.log(`  Column items:`, columnItems.map(i =>
-          `"${i.text}" at x=${i.x.toFixed(1)}, y=${i.y.toFixed(1)}`
-        ));
-      }
 
       // Combine text from this column area
       const columnText = columnItems
