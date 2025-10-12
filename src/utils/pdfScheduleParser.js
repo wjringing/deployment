@@ -31,10 +31,10 @@ export function parseSchedulePDF(extractedData) {
 
   console.log('\nTotal items across all pages:', allItems.length);
 
-  // Group items into rows by Y position (within 2px tolerance)
+  // Group items into rows by Y position (within 1px tolerance for tighter grouping)
   const rows = [];
   const sortedItems = [...allItems].sort((a, b) => {
-    if (Math.abs(a.y - b.y) < 2) return a.x - b.x;
+    if (Math.abs(a.y - b.y) < 1) return a.x - b.x;
     return a.y - b.y;
   });
 
@@ -42,7 +42,7 @@ export function parseSchedulePDF(extractedData) {
   let currentY = null;
 
   for (const item of sortedItems) {
-    if (currentY === null || Math.abs(item.y - currentY) < 2) {
+    if (currentY === null || Math.abs(item.y - currentY) < 1) {
       currentRow.push(item);
       currentY = item.y;
     } else {
