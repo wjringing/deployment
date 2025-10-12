@@ -43,10 +43,16 @@ export function parseSchedulePDF(extractedData) {
   const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   let dayColumnPositions = [];
 
-  // Search for day headers
+  // Debug: Find all "Mon" occurrences
+  const monItems = allItems.filter(i => i.text === 'Mon');
+  console.log('Found "Mon" at positions:', monItems.map(m => `x=${m.x.toFixed(1)}, y=${m.y.toFixed(1)}`));
+
+  // Search for day headers - look for "Mon" followed by other days
   for (const item of allItems) {
-    if (item.text === 'Mon' && item.x > 200) {
+    if (item.text === 'Mon') {
       const dayHeaderY = item.y;
+
+      console.log(`Checking Mon at x=${item.x.toFixed(1)}, y=${item.y.toFixed(1)}`);
 
       // Find all day headers at approximately this Y position
       const headersAtY = allItems.filter(i =>
@@ -54,12 +60,14 @@ export function parseSchedulePDF(extractedData) {
         dayHeaders.includes(i.text)
       ).sort((a, b) => a.x - b.x);
 
+      console.log(`  Found ${headersAtY.length} day headers:`, headersAtY.map(h => `${h.text}(${h.x.toFixed(1)})`).join(', '));
+
       if (headersAtY.length >= 7) {
         dayColumnPositions = headersAtY.map(h => ({
           day: h.text,
           x: h.x
         }));
-        console.log('✓ Found day headers:', dayColumnPositions.map(d => d.day).join(', '));
+        console.log('✓ Found day headers:', dayColumnPositions.map(d => `${d.day}@${d.x.toFixed(1)}`).join(', '));
         break;
       }
     }
