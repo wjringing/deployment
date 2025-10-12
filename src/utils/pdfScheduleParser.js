@@ -126,25 +126,10 @@ export function parseSchedulePDF(extractedData) {
 
   // 4. For each employee, find their shifts by looking for times near their Y-coordinate
   const employees = [];
-  const Y_SEARCH_RANGE = 25; // Search ±25 pixels from name's Y position
+  const Y_SEARCH_RANGE = 20; // Search ±20 pixels from name's Y position
 
-  // Debug specific employees
-  const debugEmployees = ['Nicole Chidlow'];
-
-  // Special debug: find "11:30" text near Nicole
-  const nicoleItem = employeeItems.find(e => e.name === 'Nicole Chidlow');
-  if (nicoleItem) {
-    console.log('\n=== SEARCHING FOR 11:30 NEAR NICOLE ===');
-    const nearbyItems = allItems.filter(item =>
-      item.text.includes('11:30') &&
-      item.pageIndex === nicoleItem.pageIndex &&
-      Math.abs(item.y - nicoleItem.y) <= 50
-    );
-    console.log(`Found ${nearbyItems.length} items with "11:30":`);
-    nearbyItems.forEach(item => {
-      console.log(`  x=${item.x.toFixed(1)}, y=${item.y.toFixed(1)} (Δ${(item.y - nicoleItem.y).toFixed(1)}): "${item.text}"`);
-    });
-  }
+  // Disable debug logging
+  const debugEmployees = [];
 
   for (const empItem of employeeItems) {
     const isDebug = debugEmployees.includes(empItem.name);
@@ -169,12 +154,14 @@ export function parseSchedulePDF(extractedData) {
 
       // Find all text items in this column's X range and near employee's Y
       // Calculate column width as distance to next column (or 85 pixels for last column)
+      // EXPANDED: Look 40px to the left to catch shift boxes that start before the column
       const nextColIndex = dayColumnPositions.indexOf(dayCol) + 1;
       const COLUMN_WIDTH = nextColIndex < dayColumnPositions.length
         ? (dayColumnPositions[nextColIndex].x - dayCol.x - 5) // 5px buffer
         : 85; // Default for last column
+      const X_LEFT_BUFFER = 40; // Look 40px left to catch shift boxes starting before column
       const columnItems = allItems.filter(item =>
-        item.x >= dayCol.x - 10 &&
+        item.x >= dayCol.x - X_LEFT_BUFFER &&
         item.x <= dayCol.x + COLUMN_WIDTH &&
         Math.abs(item.y - empItem.y) <= Y_SEARCH_RANGE &&
         item.pageIndex === empItem.pageIndex // Same page (employees don't span pages in this layout)
