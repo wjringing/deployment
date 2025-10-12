@@ -192,46 +192,46 @@ export function parseSchedulePDF(extractedData) {
 
       let hasAnyShift = false;
 
-      // Look in current row and next 3 rows for shift data
-      for (let lookAhead = 0; lookAhead <= 3 && (i + lookAhead) < rows.length; lookAhead++) {
-        const searchRow = rows[i + lookAhead];
+      // For each day column, collect text from current and next 2 rows
+      for (const dayCol of dayColumnPositions) {
+        let columnTextParts = [];
 
-        // For each day column, find times
-        for (const dayCol of dayColumnPositions) {
-          // Skip if already found shift for this day
-          if (employee.schedule[dayCol.day]) continue;
+        // Collect text from current row and next 2 rows
+        for (let lookAhead = 0; lookAhead <= 2 && (i + lookAhead) < rows.length; lookAhead++) {
+          const searchRow = rows[i + lookAhead];
 
-          // Find all items in this day column
           const itemsInColumn = searchRow.filter(item =>
             item.x >= dayCol.startX - 10 && item.x < dayCol.endX - 10
           );
 
-          if (itemsInColumn.length === 0) continue;
-
-          // Build text from items in column
-          const columnText = itemsInColumn
-            .map(item => item.text)
-            .join(' ')
-            .trim();
-
-          // Debug: show what we found (only on first iteration)
-          if (lookAhead === 0 && columnText.length > 0) {
-            console.log(`  ${dayCol.day}: found "${columnText}"`);
+          if (itemsInColumn.length > 0) {
+            const rowText = itemsInColumn.map(item => item.text).join(' ').trim();
+            if (rowText.length > 0) {
+              columnTextParts.push(rowText);
+            }
           }
+        }
 
-          // Try to parse time range
-          const timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
-          if (timeMatch) {
-            const startTime = normalizeTime(timeMatch[1] + timeMatch[2]);
-            const endTime = normalizeTime(timeMatch[3] + timeMatch[4]);
+        // Combine all parts
+        const columnText = columnTextParts.join(' ').trim();
 
-            employee.schedule[dayCol.day] = {
-              startTime,
-              endTime
-            };
-            hasAnyShift = true;
-            console.log(`    ✓ Parsed: ${startTime} - ${endTime}`);
-          }
+        if (columnText.length === 0) continue;
+
+        // Debug output
+        console.log(`  ${dayCol.day}: "${columnText}"`);
+
+        // Try to parse time range
+        const timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
+        if (timeMatch) {
+          const startTime = normalizeTime(timeMatch[1] + timeMatch[2]);
+          const endTime = normalizeTime(timeMatch[3] + timeMatch[4]);
+
+          employee.schedule[dayCol.day] = {
+            startTime,
+            endTime
+          };
+          hasAnyShift = true;
+          console.log(`    ✓ ${startTime} - ${endTime}`);
         }
       }
 
