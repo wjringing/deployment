@@ -151,79 +151,71 @@ export function parseSchedulePDF(extractedData) {
 
   console.log(`\nFound ${sections.length} sections:`, sections.map(s => s.type).join(', '));
 
-  // Step 2: Find ALL employees across all pages by looking for name+role pairs
+  // Step 2: Find ALL employees by processing each section's range
   const NAME_COLUMN_MAX_X = 160;
-  const allEmployees = [];
-
-  // Use the first section's day columns (they're all the same)
   const dayColumnPositions = sections[0].dayColumnPositions;
 
-  console.log('\n\n=== FINDING ALL EMPLOYEES ===');
+  console.log('\n\n=== FINDING ALL EMPLOYEES BY SECTION ===');
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const rowText = row.map(item => item.text).join(' ');
+  // For each section, find employees between this section header and the next
+  for (let sectionIdx = 0; sectionIdx < sections.length; sectionIdx++) {
+    const section = sections[sectionIdx];
+    const nextSectionIdx = sectionIdx + 1 < sections.length ? sections[sectionIdx + 1].headerRowIndex : rows.length;
 
-    // Skip section headers and non-content rows
-    if (rowText.includes('Unassigned') ||
-        rowText.includes('Position then') ||
-        rowText.match(/Mon\s+\d+.*Tue\s+\d+/)) {
-      continue;
-    }
+    console.log(`\n=== Processing ${section.type} section (rows ${section.headerRowIndex}-${nextSectionIdx - 1}) ===`);
 
-    // Find employee names in left column (X < 160)
-    const nameItems = row.filter(item =>
-      item.x < NAME_COLUMN_MAX_X &&
-      item.text.trim().length > 0 &&
-      !item.text.match(/^[\d\s\(\)\-]+$/) && // Skip pure numbers/symbols
-      !item.text.match(/Deployment/i)
-    );
+    // Process rows between this section header and the next
+    for (let i = section.headerRowIndex + 1; i < nextSectionIdx; i++) {
+      const row = rows[i];
+      const rowText = row.map(item => item.text).join(' ');
 
-    if (nameItems.length === 0) continue;
-
-    // Extract employee names (may be multiple on same row)
-    const employeeNames = [];
-
-    for (const item of nameItems) {
-      const text = item.text.trim();
-      // Skip role labels
-      if (text.match(/Shift Runner|Team Member|Cook|Deployment/i)) continue;
-      if (text.length < 3) continue;
-
-      // Check if this looks like a name (has letters)
-      if (text.match(/[A-Za-z]{2,}/)) {
-        employeeNames.push(text);
+      // Skip non-content rows
+      if (rowText.includes('Unassigned') ||
+          rowText.includes('Position then') ||
+          rowText.match(/Mon\s+\d+.*Tue\s+\d+/)) {
+        continue;
       }
-    }
 
-    if (employeeNames.length === 0) continue;
+      // Find employee names in left column (X < 160)
+      const nameItems = row.filter(item =>
+        item.x < NAME_COLUMN_MAX_X &&
+        item.text.trim().length > 0 &&
+        !item.text.match(/^[\d\s\(\)\-]+$/) && // Skip pure numbers/symbols
+        !item.text.match(/Deployment/i)
+      );
 
-    // Look at the NEXT row to find the role label for each employee
-    const nextRowText = i + 1 < rows.length ? rows[i + 1].map(item => item.text).join(' ') : '';
+      if (nameItems.length === 0) continue;
 
-    // Determine role from next row
-    let employeeRole = 'Team Member'; // Default
-    if (nextRowText.includes('Shift Runner Deployment')) {
-      employeeRole = 'Shift Runner';
-    } else if (nextRowText.includes('Cook Deployment')) {
-      employeeRole = 'Cook';
-    } else if (nextRowText.includes('Team Member Deployment')) {
-      employeeRole = 'Team Member';
-    }
+      // Extract employee names (may be multiple on same row)
+      const employeeNames = [];
 
-    // Debug: log found names with their role
-    console.log(`Row ${i}: Found ${employeeRole}(s): ${employeeNames.join(', ')}`);
+      for (const item of nameItems) {
+        const text = item.text.trim();
+        // Skip role labels
+        if (text.match(/Shift Runner|Team Member|Cook|Deployment/i)) continue;
+        if (text.length < 3) continue;
 
-    // For each employee name found, look ahead for their shifts
-    for (const empName of employeeNames) {
-      console.log(`\n→ Processing: ${empName} (${employeeRole})`);
+        // Check if this looks like a name (has letters)
+        if (text.match(/[A-Za-z]{2,}/)) {
+          employeeNames.push(text);
+        }
+      }
 
-      const employee = {
-        name: empName,
-        role: employeeRole,
-        schedule: {},
-        sourceRowIndex: i
-      };
+      if (employeeNames.length === 0) continue;
+
+      // Debug: log found names with their role
+      console.log(`Row ${i}: Found ${section.type}(s): ${employeeNames.join(', ')}`);
+
+      // For each employee name found, look ahead for their shifts
+      for (const empName of employeeNames) {
+        console.log(`\n→ Processing: ${empName} (${section.type})`);
+
+        const employee = {
+          name: empName,
+          role: section.type,
+          schedule: {},
+          sourceRowIndex: i
+        };
 
       let hasAnyShift = false;
 
@@ -331,7 +323,8 @@ export function parseSchedulePDF(extractedData) {
         console.log(`✗ Skipped ${empName} (no shifts found)`);
       }
     }
-  }  // End of row loop (i loop)
+    }  // End of row loop (i loop)
+  }  // End of section loop
 
   console.log('\n=== PARSING COMPLETE ===');
   console.log(`Total employees: ${scheduleData.employees.length}`);
