@@ -242,15 +242,33 @@ export function parseSchedulePDF(extractedData) {
             const startPeriod = partialMatch[2].toLowerCase();
             const endHour = parseInt(partialMatch[3].split(':')[0]);
 
-            // Infer end period: if end hour < start hour and start is pm, end is likely am next day
-            // Or if end hour is 12 and no period given, it's likely am (midnight)
+            // Smart inference of end period
             let endPeriod = startPeriod;
+
             if (endHour === 12) {
+              // End is 12 → midnight (12 am)
               endPeriod = 'am';
-            } else if (startPeriod === 'pm' && endHour < startHour) {
-              endPeriod = 'am';
-            } else if (startPeriod === 'am' && endHour < 12 && endHour < startHour) {
-              endPeriod = 'pm';
+            } else if (startPeriod === 'pm') {
+              // Start is PM
+              if (startHour === 12) {
+                // Start is noon (12 pm), end is same day if reasonable
+                endPeriod = endHour >= 1 && endHour <= 11 ? 'pm' : 'am';
+              } else if (endHour < startHour) {
+                // End hour less than start hour → crosses midnight
+                endPeriod = 'am';
+              } else {
+                // End hour >= start hour → same period
+                endPeriod = 'pm';
+              }
+            } else {
+              // Start is AM
+              if (endHour > startHour || endHour === 12) {
+                // End hour greater → likely same period or noon
+                endPeriod = endHour === 12 ? 'pm' : 'am';
+              } else {
+                // End hour less than start → crosses to pm
+                endPeriod = 'pm';
+              }
             }
 
             columnText = `${partialMatch[1]} ${startPeriod} - ${partialMatch[3]} ${endPeriod}`;
