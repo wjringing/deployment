@@ -126,10 +126,10 @@ export function parseSchedulePDF(extractedData) {
 
   // 4. For each employee, find their shifts by looking for times near their Y-coordinate
   const employees = [];
-  const Y_SEARCH_RANGE = 20; // Search ±20 pixels from name's Y position (tighter to avoid overlap)
+  const Y_SEARCH_RANGE = 25; // Search ±25 pixels from name's Y position
 
-  // Add debug for first few employees
-  const debugEmployees = ['Callum Nurse', 'Lili Martland', 'Nicole Chidlow'];
+  // Debug specific employees
+  const debugEmployees = ['Nicole Chidlow'];
 
   for (const empItem of employeeItems) {
     const isDebug = debugEmployees.includes(empItem.name);
@@ -186,8 +186,9 @@ export function parseSchedulePDF(extractedData) {
 
       if (!columnText || columnText.length < 3) continue;
 
-      // Try to extract time pattern (e.g., "11:30am - 5pm", "12pm - 8pm")
-      const timePattern = /(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i;
+      // Try to extract time pattern - REQUIRE both times to have am/pm
+      // Pattern: "11:30am - 5pm", "12pm - 8pm", "9:30 am - 5 pm"
+      const timePattern = /(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i;
       const match = columnText.match(timePattern);
 
       if (match) {
