@@ -121,6 +121,7 @@ export function parseSchedulePDF(extractedData) {
       }
 
       console.log('Day columns detected:', dayColumnPositions.length);
+      console.log('Column boundaries:', dayColumnPositions.map(d => `${d.day}: ${d.startX.toFixed(1)}-${d.endX.toFixed(1)}`).join(', '));
       break;
     }
   }
@@ -200,8 +201,9 @@ export function parseSchedulePDF(extractedData) {
         for (let lookAhead = 0; lookAhead <= 2 && (i + lookAhead) < rows.length; lookAhead++) {
           const searchRow = rows[i + lookAhead];
 
+          // Tighter column boundaries - only 5px tolerance
           const itemsInColumn = searchRow.filter(item =>
-            item.x >= dayCol.startX - 10 && item.x < dayCol.endX - 10
+            item.x >= dayCol.startX && item.x < dayCol.endX - 5
           );
 
           if (itemsInColumn.length > 0) {
@@ -213,14 +215,23 @@ export function parseSchedulePDF(extractedData) {
         }
 
         // Combine all parts
-        const columnText = columnTextParts.join(' ').trim();
+        let columnText = columnTextParts.join(' ').trim();
+
+        if (columnText.length === 0) continue;
+
+        // Filter out non-time text: role codes, day names, etc.
+        columnText = columnText
+          .replace(/\b(SH|CO|TM)\s*\([^)]*\)/gi, '') // Remove role codes like "SH (-)"
+          .replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d+\b/gi, '') // Remove day headers
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .trim();
 
         if (columnText.length === 0) continue;
 
         // Debug output
         console.log(`  ${dayCol.day}: "${columnText}"`);
 
-        // Try to parse time range
+        // Try to parse time range - find FIRST complete time range
         const timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
         if (timeMatch) {
           const startTime = normalizeTime(timeMatch[1] + timeMatch[2]);
