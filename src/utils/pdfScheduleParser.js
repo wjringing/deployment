@@ -211,11 +211,16 @@ export function parseSchedulePDF(extractedData) {
           // Build text from items in column
           const columnText = itemsInColumn
             .map(item => item.text)
-            .join('')
-            .replace(/\s+/g, '');
+            .join(' ')
+            .trim();
+
+          // Debug: show what we found (only on first iteration)
+          if (lookAhead === 0 && columnText.length > 0) {
+            console.log(`  ${dayCol.day}: found "${columnText}"`);
+          }
 
           // Try to parse time range
-          const timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)(am|pm)/i);
+          const timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
           if (timeMatch) {
             const startTime = normalizeTime(timeMatch[1] + timeMatch[2]);
             const endTime = normalizeTime(timeMatch[3] + timeMatch[4]);
@@ -225,7 +230,7 @@ export function parseSchedulePDF(extractedData) {
               endTime
             };
             hasAnyShift = true;
-            console.log(`  ${dayCol.day}: ${startTime} - ${endTime}`);
+            console.log(`    ✓ Parsed: ${startTime} - ${endTime}`);
           }
         }
       }
