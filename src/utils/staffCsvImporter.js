@@ -194,8 +194,7 @@ export async function importStaffRecords(records, options = {}) {
               is_under_18: record.is_under_18,
               updated_at: new Date().toISOString()
             })
-            .eq('id', existing.id)
-            .select();
+            .eq('id', existing.id);
 
           if (updateError) {
             results.failed.push({ record, error: updateError.message });
@@ -208,8 +207,7 @@ export async function importStaffRecords(records, options = {}) {
             .insert([{
               name: record.name,
               is_under_18: record.is_under_18
-            }])
-            .select();
+            }]);
 
           if (insertError) {
             results.failed.push({ record, error: insertError.message });
@@ -228,8 +226,7 @@ export async function importStaffRecords(records, options = {}) {
 
       const { data, error } = await supabase
         .from('staff')
-        .insert(cleanRecords)
-        .select();
+        .insert(cleanRecords);
 
       console.log('Import result:', { data, error });
 
