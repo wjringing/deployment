@@ -11,6 +11,8 @@ export function parseSchedulePDF(pdfText) {
 
   let currentSection = '';
   const dayHeaders = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  let foundDayHeaderLine = false;
+  let actualDayOrder = [];
 
   console.log('Parsing PDF with', lines.length, 'lines');
 
@@ -27,13 +29,44 @@ export function parseSchedulePDF(pdfText) {
       }
     }
 
-    // Parse date range
+    // Parse date range - look for the pattern with actual dates
     const datePattern = /(\w+\s+\w+\s+\d+\w{0,2},?\s*\d{4})/gi;
     const dateMatches = line.match(datePattern);
     if (dateMatches && dateMatches.length >= 2) {
       scheduleData.weekStart = parseDateString(dateMatches[0]);
       scheduleData.weekEnd = parseDateString(dateMatches[1]);
       console.log('Found dates:', scheduleData.weekStart, scheduleData.weekEnd);
+    }
+
+    // Check for day header line with dates (e.g., "Monday 6 Tuesday 7...")
+    if (!foundDayHeaderLine && line.match(/Monday\s+\d+/i)) {
+      foundDayHeaderLine = true;
+      actualDayOrder = [];
+
+      // Extract the day-date pattern
+      const dayDatePattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d+)/gi;
+      let match;
+      while ((match = dayDatePattern.exec(line)) !== null) {
+        actualDayOrder.push({
+          day: match[1],
+          date: parseInt(match[2])
+        });
+      }
+      console.log('Found day order with dates:', actualDayOrder);
+
+      // If we found the dates in the header, use them to correct the week start date
+      if (actualDayOrder.length > 0 && scheduleData.weekStart) {
+        const firstDayDate = actualDayOrder[0].date;
+        const parsedDate = new Date(scheduleData.weekStart);
+
+        // Adjust the date if needed
+        if (parsedDate.getDate() !== firstDayDate) {
+          parsedDate.setDate(firstDayDate);
+          scheduleData.weekStart = parsedDate;
+          console.log('Corrected week start to:', scheduleData.weekStart);
+        }
+      }
+      continue;
     }
 
     // Detect section headers
@@ -44,7 +77,7 @@ export function parseSchedulePDF(pdfText) {
     }
 
     // Skip header rows
-    if (line.includes('Employee') || dayHeaders.some(day => line.toLowerCase().includes(day.toLowerCase()) && line.split(' ').length <= 10)) {
+    if (line.includes('Employee') || (dayHeaders.some(day => line.toLowerCase().includes(day.toLowerCase())) && !line.match(/\d{1,2}:\d{2}[ap]/))) {
       continue;
     }
 

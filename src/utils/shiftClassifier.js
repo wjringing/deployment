@@ -5,7 +5,7 @@ export function classifyShift(startTime, endTime) {
   const isOvernight = end <= start;
 
   const DAY_SHIFT_END = 18 * 60;
-  const NIGHT_SHIFT_START = 15 * 60;
+  const NIGHT_SHIFT_START = 14 * 60;
   const NIGHT_SHIFT_END_MIN = 22 * 60;
   const BOTH_SHIFT_END_MAX = 22 * 60;
   const BOTH_SHIFT_END_MIN = (18 * 60) + 1;
@@ -14,7 +14,7 @@ export function classifyShift(startTime, endTime) {
     return 'day';
   }
 
-  if (start > NIGHT_SHIFT_START && (end > NIGHT_SHIFT_END_MIN || isOvernight)) {
+  if (start >= NIGHT_SHIFT_START && (end > NIGHT_SHIFT_END_MIN || isOvernight)) {
     return 'night';
   }
 
@@ -22,7 +22,7 @@ export function classifyShift(startTime, endTime) {
     return 'both';
   }
 
-  if (start > NIGHT_SHIFT_START && end <= BOTH_SHIFT_END_MAX && !isOvernight) {
+  if (start >= NIGHT_SHIFT_START && end <= BOTH_SHIFT_END_MAX && !isOvernight) {
     return 'night';
   }
 
