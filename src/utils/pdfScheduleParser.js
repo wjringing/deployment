@@ -1,86 +1,243 @@
-// New simpler approach: look for role labels in rows after each name
-export function parseSchedulePDF(extractedData) {
-  const scheduleData = {
-    location: '',
-    locationCode: '',
-    weekStart: null,
-    weekEnd: null,
-    employees: []
-  };
+/**
+ * Parses KFC TeamLive PDF schedules using position-based text extraction
+ * NEW APPROACH: Find employee names directly, then search for shifts near their Y-coordinate
+ */
+
+export async function parsePDFSchedule(file) {
+  const pdfjsLib = window['pdfjs-dist/build/pdf'];
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
   console.log('=== POSITION-BASED PDF PARSER ===');
-  console.log('Total pages:', extractedData.pages.length);
 
-  // Debug: dump first 50 text items to see structure
-  console.log('\n=== FIRST 50 TEXT ITEMS (RAW) ===');
-  extractedData.pages[0].items.slice(0, 50).forEach((item, idx) => {
-    console.log(`${idx}: x=${item.x.toFixed(1)} y=${item.y.toFixed(1)} "${item.text}"`);
-  });
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-  // Group all text items by Y position across all pages
+  console.log('Total pages:', pdf.numPages);
+
+  // Extract all text items with positions from all pages
   const allItems = [];
-  extractedData.pages.forEach((page, pageIndex) => {
-    console.log(`\nPage ${pageIndex + 1}: ${page.width}x${page.height}, ${page.items.length} items`);
-    page.items.forEach(item => {
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const textContent = await page.getTextContent();
+    const viewport = page.getViewport({ scale: 1.0 });
+
+    for (const item of textContent.items) {
       allItems.push({
-        ...item,
-        pageIndex
+        text: item.str,
+        x: item.transform[4],
+        y: viewport.height - item.transform[5],
+        pageIndex: pageNum - 1
       });
-    });
-  });
+    }
+
+    console.log(`\nPage ${pageNum}: ${viewport.width}x${viewport.height}, ${textContent.items.length} items`);
+  }
 
   console.log('\nTotal items across all pages:', allItems.length);
 
-  // Group items into rows by Y position (within 1px tolerance for tighter grouping)
-  const rows = [];
-  const sortedItems = [...allItems].sort((a, b) => {
-    if (Math.abs(a.y - b.y) < 1) return a.x - b.x;
-    return a.y - b.y;
-  });
+  // 1. Find location (from header)
+  const locationText = allItems.find(item => item.text.includes('KFC'))?.text || 'Unknown Location';
+  const locationMatch = locationText.match(/KFC\s+(.+?)\s+\d{4}/);
+  const location = locationMatch ? locationMatch[1].trim() : locationText;
 
-  let currentRow = [];
-  let currentY = null;
+  console.log('Location:', location);
 
-  for (const item of sortedItems) {
-    if (currentY === null || Math.abs(item.y - currentY) < 1) {
-      currentRow.push(item);
-      currentY = item.y;
-    } else {
-      if (currentRow.length > 0) rows.push(currentRow);
-      currentRow = [item];
-      currentY = item.y;
-    }
-  }
-  if (currentRow.length > 0) rows.push(currentRow);
+  // 2. Find the day header row and extract column positions
+  const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  let dayColumnPositions = [];
+  let dayHeaderY = null;
 
-  console.log('Total rows:', rows.length);
+  // Search for a row that has all day headers
+  for (const item of allItems) {
+    if (item.text === 'Mon' && item.x > 200) {
+      dayHeaderY = item.y;
 
-  // Debug: Show ALL rows to understand structure
-  console.log('\n=== ALL ROWS (showing left column text) ===');
-  for (let i = 0; i < rows.length; i++) {
-    const leftText = rows[i].filter(item => item.x < 160).map(item => item.text).join(' ').trim();
-    if (leftText && !leftText.match(/^[\s\(\)\-]+$/)) {
-      console.log(`Row ${i}: "${leftText}"`);
-    }
-  }
+      // Find all day headers at this Y position
+      const headersAtY = allItems.filter(i =>
+        Math.abs(i.y - dayHeaderY) < 3 &&
+        dayHeaders.includes(i.text)
+      ).sort((a, b) => a.x - b.x);
 
-  // Extract location from first few rows
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
-    const rowText = rows[i].map(item => item.text).join(' ');
-    if (rowText.includes('KFC')) {
-      const match = rowText.match(/(.*?KFC[^0-9]*(?:[^0-9]*))(\d{4})/);
-      if (match) {
-        scheduleData.location = match[1].replace(/\s+/g, ' ').trim();
-        scheduleData.locationCode = match[2];
+      if (headersAtY.length >= 7) {
+        dayColumnPositions = headersAtY.map(h => ({
+          day: h.text,
+          x: h.x
+        }));
+        console.log('\n✓ Found day header row at Y:', dayHeaderY);
+        break;
       }
-      break;
     }
   }
 
-  console.log('Location:', scheduleData.location);
+  console.log('Day columns detected:', dayColumnPositions.length);
 
-  // Find day column headers
-  const dayMap = {
+  if (dayColumnPositions.length === 0) {
+    throw new Error('Could not find day column headers in PDF');
+  }
+
+  // 3. Find ALL employee names (name-like text in left column, X < 160)
+  const NAME_COLUMN_MAX_X = 160;
+  const employeeItems = [];
+
+  console.log('\n\n=== FINDING ALL EMPLOYEE NAMES ===');
+
+  for (const item of allItems) {
+    const text = item.text.trim();
+
+    // Must be in left column
+    if (item.x >= NAME_COLUMN_MAX_X) continue;
+
+    // Must look like a name (2+ letter words, no pure numbers)
+    if (!text.match(/[A-Z][a-z]+/)) continue;
+    if (text.match(/^[\d\s\(\)\-]+$/)) continue;
+    if (text.length < 3) continue;
+
+    // Skip role labels and other non-name text
+    if (text.match(/Deployment|Unassigned|Position|Shift Runner|Team Member|Cook/i)) continue;
+
+    // This looks like an employee name
+    employeeItems.push({
+      name: text,
+      x: item.x,
+      y: item.y,
+      pageIndex: item.pageIndex
+    });
+  }
+
+  console.log(`Found ${employeeItems.length} potential employee names`);
+
+  // 4. For each employee, find their shifts by looking for times near their Y-coordinate
+  const employees = [];
+  const Y_SEARCH_RANGE = 25; // Search ±25 pixels from name's Y position
+
+  for (const empItem of employeeItems) {
+    console.log(`\n→ Processing: ${empItem.name} (Y=${empItem.y.toFixed(1)}, page ${empItem.pageIndex + 1})`);
+
+    const employee = {
+      name: empItem.name,
+      role: null,
+      schedule: {}
+    };
+
+    let hasAnyShift = false;
+
+    // For each day column, look for time patterns near the employee's Y coordinate
+    for (const dayCol of dayColumnPositions) {
+      const dayName = dayCol.day;
+
+      // Find all text items in this column's X range and near employee's Y
+      const COLUMN_WIDTH = 100; // Width of each day column
+      const columnItems = allItems.filter(item =>
+        item.x >= dayCol.x - 10 &&
+        item.x <= dayCol.x + COLUMN_WIDTH &&
+        Math.abs(item.y - empItem.y) <= Y_SEARCH_RANGE &&
+        item.pageIndex === empItem.pageIndex // Same page
+      );
+
+      // Combine text from this column area
+      const columnText = columnItems
+        .sort((a, b) => a.y - b.y)
+        .map(i => i.text)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!columnText) continue;
+
+      console.log(`  ${dayName}: "${columnText}"`);
+
+      // Try to extract time pattern
+      const timePattern = /(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i;
+      const match = columnText.match(timePattern);
+
+      if (match) {
+        const startStr = match[1].trim();
+        const endStr = match[2].trim();
+
+        try {
+          const startTime = parseTime(startStr);
+          const endTime = parseTime(endStr);
+
+          if (startTime && endTime) {
+            const fullDayName = getDayName(dayName);
+            employee.schedule[fullDayName] = {
+              start: startTime,
+              end: endTime
+            };
+            hasAnyShift = true;
+            console.log(`    ✓ ${startTime} - ${endTime}`);
+          }
+        } catch (error) {
+          console.log(`    ✗ Parse error: ${error.message}`);
+        }
+      }
+    }
+
+    if (hasAnyShift) {
+      employees.push(employee);
+      console.log(`✓ Added ${employee.name} (${Object.keys(employee.schedule).length} shifts)`);
+    } else {
+      console.log(`✗ Skipped ${employee.name} (no shifts found)`);
+    }
+  }
+
+  console.log('\n=== PARSING COMPLETE ===');
+  console.log('Total employees:', employees.length);
+
+  return {
+    location,
+    weekStart: new Date(), // You may want to extract this from the PDF
+    employees
+  };
+}
+
+/**
+ * Parse a time string like "5 pm", "11:30", "12am" into 24-hour format
+ */
+function parseTime(timeStr) {
+  timeStr = timeStr.toLowerCase().trim();
+
+  let hours = 0;
+  let minutes = 0;
+  let isPM = timeStr.includes('pm') || timeStr.includes('p');
+  let isAM = timeStr.includes('am') || timeStr.includes('a');
+
+  // Remove am/pm markers
+  timeStr = timeStr.replace(/[apm\s]/g, '');
+
+  // Parse hours and minutes
+  if (timeStr.includes(':')) {
+    const [h, m] = timeStr.split(':');
+    hours = parseInt(h);
+    minutes = parseInt(m);
+  } else {
+    hours = parseInt(timeStr);
+  }
+
+  // Convert to 24-hour format
+  if (isPM && hours < 12) {
+    hours += 12;
+  } else if (isAM && hours === 12) {
+    hours = 0;
+  }
+
+  // If no AM/PM specified, use context
+  if (!isPM && !isAM) {
+    // Times 1-6 without AM/PM are likely PM (closing shifts)
+    if (hours >= 1 && hours <= 6) {
+      hours += 12;
+    }
+  }
+
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Convert abbreviated day to full name
+ */
+function getDayName(abbr) {
+  const days = {
     'Mon': 'Monday',
     'Tue': 'Tuesday',
     'Wed': 'Wednesday',
@@ -89,268 +246,38 @@ export function parseSchedulePDF(extractedData) {
     'Sat': 'Saturday',
     'Sun': 'Sunday'
   };
-
-  let dayColumnPositions = [];
-  for (let i = 0; i < rows.length; i++) {
-    const rowText = rows[i].map(item => item.text).join(' ');
-    if (rowText.match(/Mon\s+\d+.*Tue\s+\d+.*Wed\s+\d+/)) {
-      console.log(`\n✓ Found day header row at index ${i}`);
-
-      const dayPositions = {};
-      rows[i].forEach(item => {
-        for (const [abbr, fullName] of Object.entries(dayMap)) {
-          if (item.text.startsWith(abbr + ' ') && !dayPositions[fullName]) {
-            dayPositions[fullName] = item.x;
-          }
-        }
-      });
-
-      // Extract week dates
-      const mondayDateMatch = rowText.match(/Mon\s+(\d+)/);
-      if (mondayDateMatch) {
-        const mondayDay = parseInt(mondayDateMatch[1]);
-        scheduleData.weekStart = new Date(2025, 9, mondayDay);
-
-        const sundayDateMatch = rowText.match(/Sun\s+(\d+)/);
-        if (sundayDateMatch) {
-          const sundayDay = parseInt(sundayDateMatch[1]);
-          scheduleData.weekEnd = new Date(2025, 9, sundayDay);
-        }
-      }
-
-      // Build column boundaries
-      const sortedDays = Object.values(dayMap).filter(day => dayPositions[day]);
-      for (let j = 0; j < sortedDays.length; j++) {
-        const day = sortedDays[j];
-        const startX = dayPositions[day];
-        const endX = j < sortedDays.length - 1 ? dayPositions[sortedDays[j + 1]] : 9999;
-        dayColumnPositions.push({ day, startX, endX });
-      }
-
-      console.log('Day columns detected:', dayColumnPositions.length);
-      break; // Use first header found
-    }
-  }
-
-  if (dayColumnPositions.length === 0) {
-    throw new Error('Could not find day column headers in PDF');
-  }
-
-  // Process ALL rows looking for employee names
-  const NAME_COLUMN_MAX_X = 160;
-
-  console.log('\n\n=== FINDING ALL EMPLOYEES ===');
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const rowText = row.map(item => item.text).join(' ');
-
-    // Skip section headers and non-content rows
-    if (rowText.includes('Unassigned') ||
-        rowText.includes('Position then') ||
-        rowText.match(/Mon\s+\d+.*Tue\s+\d+/) ||
-        rowText.includes('Deployment (')) {
-      continue;
-    }
-
-    // Find employee names in left column (X < 160)
-    const nameItems = row.filter(item =>
-      item.x < NAME_COLUMN_MAX_X &&
-      item.text.trim().length > 0 &&
-      !item.text.match(/^[\d\s\(\)\-]+$/) && // Skip pure numbers/symbols
-      !item.text.match(/Deployment/i)
-    );
-
-    if (nameItems.length === 0) continue;
-
-    // Extract employee names (may be multiple on same row)
-    const employeeNames = [];
-
-    for (const item of nameItems) {
-      const text = item.text.trim();
-      // Skip role labels
-      if (text.match(/Shift Runner|Team Member|Cook|Deployment/i)) continue;
-      if (text.length < 3) continue;
-
-      // Check if this looks like a name (has letters)
-      if (text.match(/[A-Za-z]{2,}/)) {
-        employeeNames.push(text);
-      }
-    }
-
-    if (employeeNames.length === 0) continue;
-
-    // Debug: log found names
-    const pageIndex = row[0].pageIndex; // All items in row should have same page
-    console.log(`Row ${i} (page ${pageIndex + 1}): Found employee(s): ${employeeNames.join(', ')}`);
-
-    // For each employee name found, look ahead for their shifts
-    for (const empName of employeeNames) {
-      console.log(`\n→ Processing: ${empName}`);
-
-      const employee = {
-        name: empName,
-        role: null, // Role will be managed separately in the app
-        schedule: {}
-      };
-
-      let hasAnyShift = false;
-
-      // For each day column, collect text from current and next 2 rows
-      for (const dayCol of dayColumnPositions) {
-        let columnTextParts = [];
-
-        // Collect text from current row and next 2 rows
-        for (let lookAhead = 0; lookAhead <= 2 && (i + lookAhead) < rows.length; lookAhead++) {
-          const searchRow = rows[i + lookAhead];
-
-          // Tighter column boundaries - only 5px tolerance
-          const itemsInColumn = searchRow.filter(item =>
-            item.x >= dayCol.startX && item.x < dayCol.endX - 5
-          );
-
-          if (itemsInColumn.length > 0) {
-            const rowText = itemsInColumn.map(item => item.text).join(' ').trim();
-            if (rowText.length > 0) {
-              columnTextParts.push(rowText);
-            }
-          }
-        }
-
-        // Combine all parts
-        let columnText = columnTextParts.join(' ').trim();
-
-        if (columnText.length === 0) continue;
-
-        // Filter out non-time text: role codes, day names, etc.
-        columnText = columnText
-          .replace(/\b(SH|CO|TM)\s*\([^)]*\)/gi, '') // Remove role codes like "SH (-)"
-          .replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d+\b/gi, '') // Remove day headers
-          .replace(/\s+/g, ' ') // Normalize whitespace
-          .trim();
-
-        if (columnText.length === 0) continue;
-
-        // Debug output
-        console.log(`  ${dayCol.day}: "${columnText}"`);
-
-        // Try to parse time range - first try complete range
-        let timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
-
-        if (!timeMatch) {
-          // Try incomplete range and infer missing am/pm
-          const partialMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\b/i);
-          if (partialMatch) {
-            const startHour = parseInt(partialMatch[1].split(':')[0]);
-            const startPeriod = partialMatch[2].toLowerCase();
-            const endHour = parseInt(partialMatch[3].split(':')[0]);
-
-            // Smart inference of end period
-            let endPeriod = startPeriod;
-
-            if (endHour === 12) {
-              // End is 12 → midnight (12 am)
-              endPeriod = 'am';
-            } else if (startPeriod === 'pm') {
-              // Start is PM
-              if (startHour === 12) {
-                // Start is noon (12 pm), end is same day if reasonable
-                endPeriod = endHour >= 1 && endHour <= 11 ? 'pm' : 'am';
-              } else if (endHour < startHour) {
-                // End hour less than start hour → crosses midnight
-                endPeriod = 'am';
-              } else {
-                // End hour >= start hour → same period
-                endPeriod = 'pm';
-              }
-            } else {
-              // Start is AM
-              if (endHour > startHour || endHour === 12) {
-                // End hour greater → likely same period or noon
-                endPeriod = endHour === 12 ? 'pm' : 'am';
-              } else {
-                // End hour less than start → crosses to pm
-                endPeriod = 'pm';
-              }
-            }
-
-            columnText = `${partialMatch[1]} ${startPeriod} - ${partialMatch[3]} ${endPeriod}`;
-            timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
-          }
-        }
-
-        if (timeMatch) {
-          const startTime = normalizeTime(timeMatch[1] + timeMatch[2]);
-          const endTime = normalizeTime(timeMatch[3] + timeMatch[4]);
-
-          employee.schedule[dayCol.day] = {
-            startTime,
-            endTime
-          };
-          hasAnyShift = true;
-          console.log(`    ✓ ${startTime} - ${endTime}`);
-        }
-      }
-
-      // Add employee if they have shifts
-      if (hasAnyShift) {
-        scheduleData.employees.push(employee);
-        console.log(`✓ Added ${empName} (${Object.keys(employee.schedule).length} shifts)`);
-      } else {
-        console.log(`✗ Skipped ${empName} (no shifts found)`);
-      }
-    }
-  }
-
-  console.log('\n=== PARSING COMPLETE ===');
-  console.log(`Total employees: ${scheduleData.employees.length}`);
-
-  return scheduleData;
+  return days[abbr] || abbr;
 }
 
-function normalizeTime(timeStr) {
-  const match = timeStr.match(/(\d{1,2})(?::(\d{2}))?([ap]m?)/i);
-  if (!match) return timeStr;
-
-  const hour = match[1];
-  const minute = match[2] || '00';
-  const meridiem = match[3].toLowerCase().replace('m', '');
-
-  return `${hour}:${minute}${meridiem}`;
+/**
+ * Legacy function for backwards compatibility
+ */
+export function parseSchedulePDF(extractedData) {
+  // This is just a wrapper that returns the extracted data
+  // The actual parsing is done by parsePDFSchedule
+  return extractedData;
 }
 
+/**
+ * Convert time to military format (already in 24-hour format from parseTime)
+ */
 export function convertTimeToMilitary(timeStr) {
-  if (!timeStr) return '';
-
-  const match = timeStr.match(/(\d{1,2}):(\d{2})(am|pm)/i);
-  if (!match) return timeStr;
-
-  let hour = parseInt(match[1]);
-  const minute = match[2];
-  const meridiem = match[3].toLowerCase();
-
-  if (meridiem === 'pm' && hour !== 12) {
-    hour += 12;
-  } else if (meridiem === 'am' && hour === 12) {
-    hour = 0;
-  }
-
-  return `${hour.toString().padStart(2, '0')}:${minute}:00`;
+  return timeStr;
 }
 
-export function getDateForDayOfWeek(weekStart, dayOfWeek) {
-  const dayMap = {
-    'Monday': 0,
-    'Tuesday': 1,
-    'Wednesday': 2,
-    'Thursday': 3,
-    'Friday': 4,
-    'Saturday': 5,
-    'Sunday': 6
-  };
+/**
+ * Get date for day of week
+ */
+export function getDateForDayOfWeek(dayName, weekStart) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayIndex = days.indexOf(dayName);
 
-  const daysToAdd = dayMap[dayOfWeek] || 0;
+  if (dayIndex === -1) return weekStart;
+
   const date = new Date(weekStart);
+  const currentDay = date.getDay();
+  const daysToAdd = (dayIndex - currentDay + 7) % 7;
   date.setDate(date.getDate() + daysToAdd);
-  return date.toISOString().split('T')[0];
+
+  return date;
 }
