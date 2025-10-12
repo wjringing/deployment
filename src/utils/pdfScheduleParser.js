@@ -99,15 +99,23 @@ export function parseSchedulePDF(pdfData) {
       const dayPositions = {};
       const dayDates = {};
 
+      // Debug: print all items in this row
+      console.log('  Header row items:');
+      rows[i].forEach(item => {
+        console.log(`    "${item.text}" at X=${item.x}`);
+      });
+
       // Find day positions and extract dates
       rows[i].forEach(item => {
         for (const [abbr, fullName] of Object.entries(dayMap)) {
           if (item.text === abbr && !dayPositions[fullName]) {
             dayPositions[fullName] = item.x;
-            console.log(`  ${fullName} at X=${item.x}`);
+            console.log(`  ✓ ${fullName} at X=${item.x}`);
           }
         }
       });
+
+      console.log('  dayPositions object:', dayPositions);
 
       // Extract the starting date (Monday's date)
       const mondayDateMatch = rowText.match(/Mon\s+(\d+)/);
