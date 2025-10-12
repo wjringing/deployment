@@ -12,6 +12,7 @@
 
   3. Validation
     - Ensure only 'Day Shift' or 'Night Shift' values are allowed
+    - No limit on number of deployments per shift type per day
 */
 
 -- Add shift_type column to deployments table
@@ -50,29 +51,5 @@ WHERE shift_type IS NULL OR shift_type = 'Day Shift';
 ALTER TABLE deployments ALTER COLUMN shift_type SET NOT NULL;
 
 -- Add index for efficient querying by date and shift type
-CREATE INDEX IF NOT EXISTS idx_deployments_date_shift_type 
+CREATE INDEX IF NOT EXISTS idx_deployments_date_shift_type
 ON deployments (date, shift_type);
-
--- Add function to check deployment limits
-CREATE OR REPLACE FUNCTION check_deployment_limit()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Check if we already have 2 deployments for this date and shift type
-  IF (
-    SELECT COUNT(*) 
-    FROM deployments 
-    WHERE date = NEW.date AND shift_type = NEW.shift_type
-  ) >= 2 THEN
-    RAISE EXCEPTION 'Maximum of 2 deployments per shift type per day exceeded for % %', NEW.shift_type, NEW.date;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create trigger to enforce deployment limits
-DROP TRIGGER IF EXISTS deployment_limit_trigger ON deployments;
-CREATE TRIGGER deployment_limit_trigger
-  BEFORE INSERT ON deployments
-  FOR EACH ROW
-  EXECUTE FUNCTION check_deployment_limit();
