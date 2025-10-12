@@ -231,8 +231,33 @@ export function parseSchedulePDF(extractedData) {
         // Debug output
         console.log(`  ${dayCol.day}: "${columnText}"`);
 
-        // Try to parse time range - find FIRST complete time range
-        const timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
+        // Try to parse time range - first try complete range
+        let timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
+
+        if (!timeMatch) {
+          // Try incomplete range and infer missing am/pm
+          const partialMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\b/i);
+          if (partialMatch) {
+            const startHour = parseInt(partialMatch[1].split(':')[0]);
+            const startPeriod = partialMatch[2].toLowerCase();
+            const endHour = parseInt(partialMatch[3].split(':')[0]);
+
+            // Infer end period: if end hour < start hour and start is pm, end is likely am next day
+            // Or if end hour is 12 and no period given, it's likely am (midnight)
+            let endPeriod = startPeriod;
+            if (endHour === 12) {
+              endPeriod = 'am';
+            } else if (startPeriod === 'pm' && endHour < startHour) {
+              endPeriod = 'am';
+            } else if (startPeriod === 'am' && endHour < 12 && endHour < startHour) {
+              endPeriod = 'pm';
+            }
+
+            columnText = `${partialMatch[1]} ${startPeriod} - ${partialMatch[3]} ${endPeriod}`;
+            timeMatch = columnText.match(/(\d{1,2}(?::\d{2})?)\s*(am|pm)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)/i);
+          }
+        }
+
         if (timeMatch) {
           const startTime = normalizeTime(timeMatch[1] + timeMatch[2]);
           const endTime = normalizeTime(timeMatch[3] + timeMatch[4]);
