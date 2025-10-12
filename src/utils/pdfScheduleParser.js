@@ -78,96 +78,93 @@ export function parseSchedulePDF(extractedData) {
 
   console.log('Location:', scheduleData.location);
 
-  // Find the day header row
-  let headerRowIndex = -1;
-  const dayColumnPositions = [];
+  // Step 1: Find ALL section headers with their day columns
+  const sections = [];
+  const dayMap = {
+    'Mon': 'Monday',
+    'Tue': 'Tuesday',
+    'Wed': 'Wednesday',
+    'Thu': 'Thursday',
+    'Fri': 'Friday',
+    'Sat': 'Saturday',
+    'Sun': 'Sunday'
+  };
 
   for (let i = 0; i < rows.length; i++) {
     const rowText = rows[i].map(item => item.text).join(' ');
-    if (rowText.match(/Mon\s+\d+.*Tue\s+\d+.*Wed\s+\d+/)) {
-      headerRowIndex = i;
-      console.log(`\n✓ Found day header row at index ${i} : ${rowText}`);
 
-      const dayMap = {
-        'Mon': 'Monday',
-        'Tue': 'Tuesday',
-        'Wed': 'Wednesday',
-        'Thu': 'Thursday',
-        'Fri': 'Friday',
-        'Sat': 'Saturday',
-        'Sun': 'Sunday'
-      };
+    // Look for section headers with day columns
+    if (rowText.match(/(Shift Runner|Team Member|Cook)\s+Deployment.*Mon\s+\d+.*Tue\s+\d+/i)) {
+      const sectionMatch = rowText.match(/(Shift Runner|Team Member|Cook)\s+Deployment/i);
+      if (sectionMatch) {
+        const sectionType = sectionMatch[1];
 
-      const dayPositions = {};
+        // Find day positions for this section
+        const dayPositions = {};
+        rows[i].forEach(item => {
+          for (const [abbr, fullName] of Object.entries(dayMap)) {
+            if (item.text.startsWith(abbr + ' ') && !dayPositions[fullName]) {
+              dayPositions[fullName] = item.x;
+            }
+          }
+        });
 
-      // Find day positions - text items are like "Mon 6", "Tue 7", etc.
-      rows[i].forEach(item => {
-        for (const [abbr, fullName] of Object.entries(dayMap)) {
-          if (item.text.startsWith(abbr + ' ') && !dayPositions[fullName]) {
-            dayPositions[fullName] = item.x;
+        // Build column boundaries
+        const dayColumnPositions = [];
+        const sortedDays = Object.values(dayMap).filter(day => dayPositions[day]);
+        for (let j = 0; j < sortedDays.length; j++) {
+          const day = sortedDays[j];
+          const startX = dayPositions[day];
+          const endX = j < sortedDays.length - 1 ? dayPositions[sortedDays[j + 1]] : 9999;
+          dayColumnPositions.push({ day, startX, endX });
+        }
+
+        sections.push({
+          type: sectionType,
+          headerRowIndex: i,
+          dayColumnPositions
+        });
+
+        console.log(`\n✓ Found section: ${sectionType} at row ${i}`);
+
+        // Extract week dates from first section only
+        if (sections.length === 1) {
+          const mondayDateMatch = rowText.match(/Mon\s+(\d+)/);
+          if (mondayDateMatch) {
+            const mondayDay = parseInt(mondayDateMatch[1]);
+            scheduleData.weekStart = new Date(2025, 9, mondayDay);
+
+            const sundayDateMatch = rowText.match(/Sun\s+(\d+)/);
+            if (sundayDateMatch) {
+              const sundayDay = parseInt(sundayDateMatch[1]);
+              scheduleData.weekEnd = new Date(2025, 9, sundayDay);
+            }
           }
         }
-      });
-
-      // Extract week dates
-      const mondayDateMatch = rowText.match(/Mon\s+(\d+)/);
-      if (mondayDateMatch) {
-        const mondayDay = parseInt(mondayDateMatch[1]);
-        scheduleData.weekStart = new Date(2025, 9, mondayDay);
-
-        const sundayDateMatch = rowText.match(/Sun\s+(\d+)/);
-        if (sundayDateMatch) {
-          const sundayDay = parseInt(sundayDateMatch[1]);
-          scheduleData.weekEnd = new Date(2025, 9, sundayDay);
-        }
       }
-
-      // Build column boundaries
-      const sortedDays = Object.values(dayMap).filter(day => dayPositions[day]);
-      for (let j = 0; j < sortedDays.length; j++) {
-        const day = sortedDays[j];
-        const startX = dayPositions[day];
-        const endX = j < sortedDays.length - 1 ? dayPositions[sortedDays[j + 1]] : 9999;
-        dayColumnPositions.push({
-          day,
-          startX,
-          endX
-        });
-      }
-
-      console.log('Day columns detected:', dayColumnPositions.length);
-      console.log('Column boundaries:', dayColumnPositions.map(d => `${d.day}: ${d.startX.toFixed(1)}-${d.endX.toFixed(1)}`).join(', '));
-      break;
     }
   }
 
-  if (headerRowIndex === -1 || dayColumnPositions.length === 0) {
-    throw new Error('Could not find day column headers in PDF');
+  if (sections.length === 0) {
+    throw new Error('Could not find any section headers in PDF');
   }
 
-  // Parse employees with multi-row lookahead
-  const NAME_COLUMN_MAX_X = 160; // Names are at X≈64, well before day columns start
-  let currentSection = '';
+  console.log(`\nFound ${sections.length} sections:`, sections.map(s => s.type).join(', '));
 
-  // Process ALL rows, not just after first header (employees can be on any page)
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const rowText = row.map(item => item.text).join(' ');
+  // Step 2: Process each section separately
+  const NAME_COLUMN_MAX_X = 160;
 
-    // Skip day header rows
-    if (rowText.match(/Mon\s+\d+.*Tue\s+\d+.*Wed\s+\d+/)) {
-      continue;
-    }
+  for (const section of sections) {
+    console.log(`\n\n=== PROCESSING SECTION: ${section.type} ===`);
+    const { headerRowIndex, dayColumnPositions } = section;
 
-    // Detect section headers
-    if (rowText.match(/(Shift Runner|Team Member|Cook)\s+Deployment/i)) {
-      const sectionMatch = rowText.match(/(Shift Runner|Team Member|Cook)/i);
-      if (sectionMatch) {
-        currentSection = sectionMatch[1];
-        console.log(`\n=== Section: ${currentSection} ===`);
-      }
-      continue;
-    }
+    // Find the end of this section (next section header or end of document)
+    const nextSectionIndex = sections.find(s => s.headerRowIndex > headerRowIndex)?.headerRowIndex || rows.length;
+
+    // Process rows in this section
+    for (let i = headerRowIndex + 1; i < nextSectionIndex; i++) {
+      const row = rows[i];
+      const rowText = row.map(item => item.text).join(' ');
 
     // Skip non-content rows
     if (rowText.includes('Unassigned') || rowText.includes('Position then')) {
@@ -213,7 +210,7 @@ export function parseSchedulePDF(extractedData) {
 
       const employee = {
         name: empName,
-        role: currentSection || 'Team Member',
+        role: section.type,
         schedule: {}
       };
 
@@ -323,7 +320,8 @@ export function parseSchedulePDF(extractedData) {
         console.log(`✗ Skipped ${empName} (no shifts found)`);
       }
     }
-  }
+    }  // End of row loop (i loop)
+  }  // End of section loop
 
   console.log('\n=== PARSING COMPLETE ===');
   console.log(`Total employees: ${scheduleData.employees.length}`);
