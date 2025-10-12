@@ -53,11 +53,20 @@ export function parseSchedulePDF(pdfData) {
 
   console.log('Total rows:', rows.length);
 
-  // Debug: Print first 30 rows
-  console.log('\n=== FIRST 30 ROWS ===');
+  // Debug: Print first 30 rows with detailed positions
+  console.log('\n=== FIRST 30 ROWS (with positions) ===');
   for (let i = 0; i < Math.min(30, rows.length); i++) {
     const rowText = rows[i].map(item => item.text).join(' ');
-    console.log(`Row ${i}: ${rowText}`);
+    console.log(`Row ${i} (Y=${rows[i][0]?.y.toFixed(1)}): ${rowText}`);
+
+    // Show individual items for rows 7-15 (after header)
+    if (i >= 7 && i <= 15) {
+      rows[i].forEach(item => {
+        if (item.text.trim()) {
+          console.log(`  [X=${item.x.toFixed(1)}] "${item.text}"`);
+        }
+      });
+    }
   }
 
   // Extract location
