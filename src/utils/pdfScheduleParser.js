@@ -54,12 +54,13 @@ export function parseSchedulePDF(extractedData) {
 
   console.log('Total rows:', rows.length);
 
-  // Debug: Show all row text from row 60 onwards to see pages 2-3
-  console.log('\n=== ROWS 60-73 (PAGES 2-3) ===');
-  for (let i = 60; i < Math.min(rows.length, 75); i++) {
-    const rowText = rows[i].map(item => item.text).join(' ');
-    const leftMostX = Math.min(...rows[i].map(item => item.x));
-    console.log(`Row ${i} (x=${leftMostX.toFixed(0)}): ${rowText.substring(0, 80)}`);
+  // Debug: Show ALL rows to understand structure
+  console.log('\n=== ALL ROWS (showing left column text) ===');
+  for (let i = 0; i < rows.length; i++) {
+    const leftText = rows[i].filter(item => item.x < 160).map(item => item.text).join(' ').trim();
+    if (leftText && !leftText.match(/^[\s\(\)\-]+$/)) {
+      console.log(`Row ${i}: "${leftText}"`);
+    }
   }
 
   // Extract location from first few rows
