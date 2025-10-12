@@ -11,15 +11,13 @@ export function parseSchedulePDF(pdfText) {
 
   let currentSection = '';
   const dayHeaders = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  let foundDayHeaderLine = false;
-  let actualDayOrder = [];
+  let dayColumnDates = {};
 
   console.log('Parsing PDF with', lines.length, 'lines');
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Parse location
     if (line.includes("'s schedule for") || line.includes("schedule for")) {
       const match = line.match(/^(.+?)\s+(\d+)\s*'?s?\s*schedule for/i);
       if (match) {
@@ -29,83 +27,78 @@ export function parseSchedulePDF(pdfText) {
       }
     }
 
-    // Parse date range - look for the pattern with actual dates
     const datePattern = /(\w+\s+\w+\s+\d+\w{0,2},?\s*\d{4})/gi;
     const dateMatches = line.match(datePattern);
     if (dateMatches && dateMatches.length >= 2) {
       scheduleData.weekStart = parseDateString(dateMatches[0]);
       scheduleData.weekEnd = parseDateString(dateMatches[1]);
-      console.log('Found dates:', scheduleData.weekStart, scheduleData.weekEnd);
+      console.log('Found dates from title:', scheduleData.weekStart, scheduleData.weekEnd);
     }
 
-    // Check for day header line with dates (e.g., "Monday 6 Tuesday 7...")
-    if (!foundDayHeaderLine && line.match(/Monday\s+\d+/i)) {
-      foundDayHeaderLine = true;
-      actualDayOrder = [];
-
-      // Extract the day-date pattern
-      const dayDatePattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d+)/gi;
+    if (line.match(/Monday\s+\d+\s+of\s+October/i)) {
+      const dayDatePattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d+)\s+of\s+\w+/gi;
       let match;
       while ((match = dayDatePattern.exec(line)) !== null) {
-        actualDayOrder.push({
-          day: match[1],
-          date: parseInt(match[2])
-        });
+        const dayName = match[1];
+        const dayDate = parseInt(match[2]);
+        dayColumnDates[dayName] = dayDate;
+        console.log(`Found column header: ${dayName} = ${dayDate}`);
       }
-      console.log('Found day order with dates:', actualDayOrder);
 
-      // If we found the dates in the header, use them to correct the week start date
-      if (actualDayOrder.length > 0 && scheduleData.weekStart) {
-        const firstDayDate = actualDayOrder[0].date;
-        const parsedDate = new Date(scheduleData.weekStart);
-
-        // Adjust the date if needed
-        if (parsedDate.getDate() !== firstDayDate) {
-          parsedDate.setDate(firstDayDate);
-          scheduleData.weekStart = parsedDate;
+      if (Object.keys(dayColumnDates).length > 0) {
+        const mondayDate = dayColumnDates['Monday'];
+        if (mondayDate && scheduleData.weekStart) {
+          const year = scheduleData.weekStart.getFullYear();
+          const month = scheduleData.weekStart.getMonth();
+          scheduleData.weekStart = new Date(year, month, mondayDate);
           console.log('Corrected week start to:', scheduleData.weekStart);
         }
       }
       continue;
     }
 
-    // Detect section headers
     if (line.match(/Shift Runner|Team Member|Cook/i) && line.match(/Deployment/i)) {
       currentSection = line.replace(/Deployment/i, '').trim();
       console.log('Found section:', currentSection);
       continue;
     }
 
-    // Skip header rows
-    if (line.includes('Employee') || (dayHeaders.some(day => line.toLowerCase().includes(day.toLowerCase())) && !line.match(/\d{1,2}:\d{2}[ap]/))) {
+    if (line.includes('Employee') || line.includes('of October')) {
       continue;
     }
 
-    // Parse employee data
     if (currentSection) {
-      // Look for time patterns in the line
-      const timePattern = /\d{1,2}:\d{2}[ap]/g;
-      const times = line.match(timePattern);
+      const timePattern = /(\d{1,2}:\d{2}[ap])\s*-\s*(\d{1,2}:\d{2}[ap])/g;
+      const shiftMatches = [];
+      let match;
 
-      if (times && times.length >= 2) {
-        // Extract employee name (text before first time)
-        const firstTimeIndex = line.indexOf(times[0]);
-        const employeeName = line.substring(0, firstTimeIndex).trim();
+      while ((match = timePattern.exec(line)) !== null) {
+        shiftMatches.push({
+          start: match[1],
+          end: match[2],
+          fullMatch: match[0]
+        });
+      }
 
-        if (employeeName && employeeName.length > 2 && !employeeName.includes('of ') && !employeeName.match(/^\d/)) {
+      if (shiftMatches.length > 0) {
+        const firstShiftIndex = line.indexOf(shiftMatches[0].fullMatch);
+        const employeeName = line.substring(0, firstShiftIndex).trim();
+
+        if (employeeName && employeeName.length > 2 && !employeeName.match(/^\d/) && !employeeName.includes('of ')) {
           const employee = {
             name: employeeName,
             role: currentSection,
             schedule: {}
           };
 
-          // Parse all time ranges in the line
+          let remainingLine = line;
           let dayIndex = 0;
-          for (let t = 0; t < times.length && dayIndex < dayHeaders.length; t += 2) {
-            if (t + 1 < times.length) {
+
+          for (const shift of shiftMatches) {
+            if (dayIndex < dayHeaders.length) {
               employee.schedule[dayHeaders[dayIndex]] = {
-                startTime: times[t],
-                endTime: times[t + 1]
+                startTime: shift.start,
+                endTime: shift.end
               };
               dayIndex++;
             }
