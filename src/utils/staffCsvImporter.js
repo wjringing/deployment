@@ -224,12 +224,17 @@ export async function importStaffRecords(records, options = {}) {
         is_under_18: r.is_under_18
       }));
 
+      console.log('Importing records:', cleanRecords);
+
       const { data, error } = await supabase
         .from('staff')
         .insert(cleanRecords)
         .select();
 
+      console.log('Import result:', { data, error });
+
       if (error) {
+        console.error('Import error details:', error);
         if (error.code === '23505') {
           results.failed.push({
             record: 'batch',
