@@ -10,6 +10,12 @@ export function parseSchedulePDF(extractedData) {
   console.log('=== POSITION-BASED PDF PARSER ===');
   console.log('Total pages:', extractedData.pages.length);
 
+  // Debug: dump first 50 text items to see structure
+  console.log('\n=== FIRST 50 TEXT ITEMS (RAW) ===');
+  extractedData.pages[0].items.slice(0, 50).forEach((item, idx) => {
+    console.log(`${idx}: x=${item.x.toFixed(1)} y=${item.y.toFixed(1)} "${item.text}"`);
+  });
+
   // Group all text items by Y position across all pages
   const allItems = [];
   extractedData.pages.forEach((page, pageIndex) => {
