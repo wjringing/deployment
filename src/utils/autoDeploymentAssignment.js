@@ -64,6 +64,12 @@ export async function autoAssignScheduleToDeployments(scheduleId, weekStartDate)
               date: shift.shift_date,
               shifts: ['Day Shift', 'Night Shift']
             });
+          } else if (!dayDeployment || !nightDeployment) {
+            results.skipped.push({
+              employeeName: shift.schedule_employees.name,
+              date: shift.shift_date,
+              reason: 'Maximum deployments reached for one or both shifts'
+            });
           }
         } else {
           const deployment = await createDeployment(
@@ -86,6 +92,12 @@ export async function autoAssignScheduleToDeployments(scheduleId, weekStartDate)
               employeeName: shift.schedule_employees.name,
               date: shift.shift_date,
               shift: shiftClassification
+            });
+          } else {
+            results.skipped.push({
+              employeeName: shift.schedule_employees.name,
+              date: shift.shift_date,
+              reason: `Maximum deployments reached for ${shiftClassification}`
             });
           }
         }
@@ -116,6 +128,22 @@ async function createDeployment(shift, shiftType, shiftDate) {
       .maybeSingle();
 
     if (existingDeployment) {
+      return null;
+    }
+
+    const { count: deploymentCount, error: countError } = await supabase
+      .from('deployments')
+      .select('*', { count: 'exact', head: true })
+      .eq('date', shiftDate)
+      .eq('shift_type', shiftType);
+
+    if (countError) {
+      console.error('Error checking deployment count:', countError);
+      return null;
+    }
+
+    if (deploymentCount >= 2) {
+      console.warn(`Maximum deployments reached for ${shiftType} on ${shiftDate}`);
       return null;
     }
 
