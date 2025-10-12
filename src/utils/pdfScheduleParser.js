@@ -187,6 +187,11 @@ export function parseSchedulePDF(extractedData) {
 
     if (employeeNames.length === 0) continue;
 
+    // Debug: log found names
+    if (employeeNames.length > 0) {
+      console.log(`Row ${i}: Found names: ${employeeNames.join(', ')}`);
+    }
+
     // For each employee name found, look ahead in next 3 rows for their shifts
     for (const empName of employeeNames) {
       console.log(`\n→ Processing: ${empName}`);
