@@ -50,11 +50,50 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
   const [showRecallModal, setShowRecallModal] = useState(false);
   const [editingShiftTime, setEditingShiftTime] = useState(null);
 
-  const handleRecallAllStaff = () => {
-    setDeploymentRows(prev => 
-      prev.map(row => ({ ...row, staff: null }))
-    );
-    setShowRecallModal(false);
+  const handleRecallAllStaff = async () => {
+    try {
+      setUiLoading(true);
+
+      // Get all existing deployments for the current date and shift type
+      const deploymentsToRecall = currentDeployments.filter(d => d.shift_type === selectedShiftType);
+
+      console.log('🔄 Recalling deployments:', deploymentsToRecall.length);
+
+      // Move each deployment to workspace (same as Edit)
+      for (const deployment of deploymentsToRecall) {
+        const newRow = {
+          id: `row-${Date.now()}-${Math.random()}`,
+          staff: deployment.staff ? {
+            id: deployment.staff.id,
+            name: deployment.staff.name,
+            is_under_18: deployment.staff.is_under_18
+          } : null,
+          position: deployment.position || '',
+          secondary: deployment.secondary || '',
+          shiftTime: {
+            startTime: deployment.start_time,
+            endTime: deployment.end_time,
+            shift_type: deployment.shift_type
+          },
+          area: deployment.area || '',
+          closing: deployment.closing || '',
+          originalDeploymentId: deployment.id
+        };
+
+        setDeploymentRows(prev => [...prev, newRow]);
+
+        // Remove from database
+        await removeDeployment(deployment.id);
+      }
+
+      console.log('✅ All staff recalled to workspace');
+      setShowRecallModal(false);
+
+    } catch (error) {
+      console.error('❌ Error recalling staff:', error);
+    } finally {
+      setUiLoading(false);
+    }
   };
 
   const handleResetWorkspace = () => {
@@ -121,6 +160,13 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
   };
   
   const positionCategories = generatePositionCategories();
+
+  // Debug logging for position categories
+  useEffect(() => {
+    console.log('🏷️ Position Categories:', positionCategories);
+    console.log('📦 Total Positions:', positions.length);
+    console.log('📍 Areas:', positions.filter(p => p.type === 'area').length);
+  }, [positions]);
 
   // Simple drag and drop handlers
   const handleDragStart = (e, item, type) => {
