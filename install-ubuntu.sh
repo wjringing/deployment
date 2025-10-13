@@ -22,7 +22,7 @@ set -e  # Exit on any error
 DOMAIN="your-domain.com"
 APP_USER="${SUDO_USER:-deployapp}"
 APP_DIR="/var/www/deployment-app"
-SERVICE_NAME="deployment-system"
+SERVICE_NAME="deployment-system-dev"
 GITHUB_REPO="https://github.com/wjlander/deploymentnew.git"
 NODE_VERSION="18"
 
@@ -667,7 +667,7 @@ cat > /usr/local/bin/deployment-status << 'STATUS_EOF'
 
 # Status check script for KFC Deployment Management System
 
-DOMAIN_FILE="/etc/nginx/sites-available/deployment-system"
+DOMAIN_FILE="/etc/nginx/sites-available/deployment-system-dev"
 DOMAIN=$(grep "server_name" $DOMAIN_FILE 2>/dev/null | awk '{print $2}' | sed 's/;//' | head -1 || echo "unknown")
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -722,7 +722,7 @@ log_success "Management scripts created"
 
 log_step "Step 14: Configuring Log Rotation"
 
-cat > /etc/logrotate.d/deployment-system << 'LOGROTATE_EOF'
+cat > /etc/logrotate.d/deployment-system-dev << 'LOGROTATE_EOF'
 /var/log/nginx/deployment_*.log {
     daily
     missingok
