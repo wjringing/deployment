@@ -168,7 +168,13 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
     console.log('🏷️ Position Categories:', positionCategories);
     console.log('📦 Total Positions:', positions.length);
     console.log('📍 Areas:', positions.filter(p => p.type === 'area').length);
-  }, [positions]);
+    console.log('🔍 Position Categories Keys:', Object.keys(positionCategories));
+    console.log('🔍 Position Categories Entries:', Object.entries(positionCategories));
+    if (positions.length > 0) {
+      console.log('🔍 Sample positions:', positions.slice(0, 3));
+      console.log('🔍 Sample areas:', positions.filter(p => p.type === 'area').slice(0, 2));
+    }
+  }, [positions, positionCategories]);
 
   // Simple drag and drop handlers
   const handleDragStart = (e, item, type) => {
