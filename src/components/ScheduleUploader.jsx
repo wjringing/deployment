@@ -53,15 +53,43 @@ export default function ScheduleUploader() {
   const saveScheduleToDatabase = async (parsedSchedule) => {
     try {
       const weekDates = Object.values(parsedSchedule.week);
-      const weekStartDate = new Date(2025, 9, Math.min(...weekDates));
-      const weekEndDate = new Date(2025, 9, Math.max(...weekDates));
+      const minDay = Math.min(...weekDates);
+      const maxDay = Math.max(...weekDates);
+
+      // Get current date to determine year and month
+      const now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth();
+
+      // If we're in December and the schedule shows days 1-7, it's likely next year January
+      if (month === 11 && minDay < 7) {
+        year++;
+        month = 0;
+      }
+      // If we're in January and the schedule shows days > 25, it's likely last year December
+      else if (month === 0 && maxDay > 25) {
+        year--;
+        month = 11;
+      }
+
+      // Format dates as YYYY-MM-DD in local timezone
+      const formatLocalDate = (day) => {
+        const date = new Date(year, month, day);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      const weekStartDate = formatLocalDate(minDay);
+      const weekEndDate = formatLocalDate(maxDay);
 
       const { data: scheduleRecord, error: scheduleError } = await supabase
         .from('shift_schedules')
         .insert({
           location: parsedSchedule.location || 'KFC',
-          week_start_date: weekStartDate.toISOString().split('T')[0],
-          week_end_date: weekEndDate.toISOString().split('T')[0],
+          week_start_date: weekStartDate,
+          week_end_date: weekEndDate,
           uploaded_at: new Date().toISOString(),
           raw_data: parsedSchedule
         })
@@ -84,7 +112,7 @@ export default function ScheduleUploader() {
         if (employeeError) throw employeeError;
 
         for (const shift of employee.shifts) {
-          const shiftDate = new Date(2025, 9, parsedSchedule.week[shift.day]);
+          const shiftDate = formatLocalDate(parsedSchedule.week[shift.day]);
           const classification = classifyShift(shift.start, shift.end);
 
           await supabase
@@ -92,7 +120,7 @@ export default function ScheduleUploader() {
             .insert({
               schedule_id: scheduleRecord.id,
               schedule_employee_id: employeeRecord.id,
-              shift_date: shiftDate.toISOString().split('T')[0],
+              shift_date: shiftDate,
               day_of_week: shift.day,
               start_time: shift.start,
               end_time: shift.end,
