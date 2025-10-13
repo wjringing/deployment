@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { convertTo24Hour } from './timeCalculations';
 
 export const exportToPDF = (deployments, shiftInfo, selectedDate, exportType = 'all') => {
   const doc = new jsPDF();
@@ -49,24 +50,20 @@ export const exportToPDF = (deployments, shiftInfo, selectedDate, exportType = '
       return '0.0';
     }
 
-    const startParts = startTime.split(':');
-    const endParts = endTime.split(':');
+    const startConverted = convertTo24Hour(startTime);
+    const endConverted = convertTo24Hour(endTime);
 
-    if (startParts.length !== 2 || endParts.length !== 2) {
+    if (!startConverted || !endConverted) {
       return '0.0';
     }
 
-    const startHour = parseInt(startParts[0]);
-    const startMin = parseInt(startParts[1]);
-    const endHour = parseInt(endParts[0]);
-    const endMin = parseInt(endParts[1]);
-
-    if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+    if (isNaN(startConverted.hours) || isNaN(startConverted.minutes) ||
+        isNaN(endConverted.hours) || isNaN(endConverted.minutes)) {
       return '0.0';
     }
 
-    let start = startHour + startMin / 60;
-    let end = endHour + endMin / 60;
+    let start = startConverted.hours + startConverted.minutes / 60;
+    let end = endConverted.hours + endConverted.minutes / 60;
 
     if (end < start) {
       end += 24;

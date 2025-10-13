@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import { calculateWorkHours, calculateBreakTime } from '../utils/timeCalculations';
 import { 
   Users, 
   MapPin, 
@@ -305,7 +306,7 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
           secondary: row.secondary || '',
           area: row.area || '',
           closing: row.closing || '',
-          break_minutes: calculateBreakTime(row.staff, row.shiftTime),
+          break_minutes: calculateBreakTimeLocal(row.staff, row.shiftTime),
           shift_type: selectedShiftType
         }));
 
@@ -324,23 +325,9 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
     }
   };
 
-  const calculateBreakTime = (staffMember, shift) => {
-    const [startHour, startMin] = shift.startTime.split(':').map(Number);
-    const [endHour, endMin] = shift.endTime.split(':').map(Number);
-    
-    let start = startHour + startMin / 60;
-    let end = endHour + endMin / 60;
-    
-    if (end < start) end += 24;
-    const workHours = end - start;
-
-    if (staffMember.is_under_18) {
-      return workHours >= 4.5 ? 30 : 0;
-    }
-    
-    if (workHours >= 6) return 30;
-    if (workHours >= 4.5) return 15;
-    return 0;
+  const calculateBreakTimeLocal = (staffMember, shift) => {
+    const workHours = calculateWorkHours(shift.startTime, shift.endTime);
+    return calculateBreakTime(staffMember, workHours);
   };
 
   const clearWorkspace = () => {

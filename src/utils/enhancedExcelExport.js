@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { convertTo24Hour } from './timeCalculations';
 
 export const exportEnhancedExcel = (deployments, shiftInfo, selectedDate, targets) => {
   // Create a new workbook
@@ -21,24 +22,20 @@ export const exportEnhancedExcel = (deployments, shiftInfo, selectedDate, target
       return '0.00';
     }
 
-    const startParts = startTime.split(':');
-    const endParts = endTime.split(':');
+    const startConverted = convertTo24Hour(startTime);
+    const endConverted = convertTo24Hour(endTime);
 
-    if (startParts.length !== 2 || endParts.length !== 2) {
+    if (!startConverted || !endConverted) {
       return '0.00';
     }
 
-    const startHour = parseInt(startParts[0]);
-    const startMin = parseInt(startParts[1]);
-    const endHour = parseInt(endParts[0]);
-    const endMin = parseInt(endParts[1]);
-
-    if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+    if (isNaN(startConverted.hours) || isNaN(startConverted.minutes) ||
+        isNaN(endConverted.hours) || isNaN(endConverted.minutes)) {
       return '0.00';
     }
 
-    let start = startHour + startMin / 60;
-    let end = endHour + endMin / 60;
+    let start = startConverted.hours + startConverted.minutes / 60;
+    let end = endConverted.hours + endConverted.minutes / 60;
 
     if (end < start) {
       end += 24;

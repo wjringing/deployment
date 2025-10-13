@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, Edit2, Save, X, Clock, User, MapPin, Chrome as Broom } from 'lucide-react';
+import { calculateWorkHours } from '../utils/timeCalculations';
 
 const DeploymentCard = ({ deployment, onRemove, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -18,37 +19,6 @@ const DeploymentCard = ({ deployment, onRemove, onUpdate }) => {
   const secondaryPositions = [...positions, ...packPositions];
   const areas = ['Cooks', 'DT', 'Front', 'Mid', 'Lobby', 'Pck Mid', 'Float / Bottlenecks', 'Table Service / Lobby'];
   const cleaningAreas = ['Lobby / Toilets', 'Front', 'Staff Room / Toilet', 'Kitchen'];
-
-  const calculateWorkHours = (startTime, endTime) => {
-    if (!startTime || !endTime || typeof startTime !== 'string' || typeof endTime !== 'string') {
-      return 0;
-    }
-
-    const startParts = startTime.split(':');
-    const endParts = endTime.split(':');
-
-    if (startParts.length !== 2 || endParts.length !== 2) {
-      return 0;
-    }
-
-    const startHour = parseInt(startParts[0]);
-    const startMin = parseInt(startParts[1]);
-    const endHour = parseInt(endParts[0]);
-    const endMin = parseInt(endParts[1]);
-
-    if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
-      return 0;
-    }
-
-    let start = startHour + startMin / 60;
-    let end = endHour + endMin / 60;
-
-    if (end < start) {
-      end += 24;
-    }
-
-    return end - start;
-  };
 
   const workHours = calculateWorkHours(deployment.start_time, deployment.end_time);
 
