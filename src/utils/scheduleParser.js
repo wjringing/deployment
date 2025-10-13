@@ -133,21 +133,36 @@ export function convertToDayView(schedule) {
 
 export function classifyShift(startTime, endTime) {
   const startMinutes = convertTimeToMinutes(startTime);
-  const endMinutes = convertTimeToMinutes(endTime);
+  let endMinutes = convertTimeToMinutes(endTime);
 
-  if (endMinutes <= 1080) {
+  // Handle shifts that end after midnight (12:00 AM - 5:00 AM)
+  // If end time is between 12:00 AM and 5:00 AM (0-300 minutes), treat as next day
+  if (endMinutes < 300) {
+    endMinutes += 1440; // Add 24 hours
+  }
+
+  // Day Shift: start > 05:00 (300 minutes) AND end < 18:00 (1080 minutes)
+  if (startMinutes > 300 && endMinutes < 1080) {
     return 'Day Shift';
   }
 
-  if (startMinutes > 900 && endMinutes > 1320) {
+  // Night Shift: start > 13:59 (839 minutes) AND end > 03:00 (180 minutes or 1620+ if after midnight)
+  if (startMinutes > 839 && endMinutes > 1620) {
     return 'Night Shift';
   }
 
-  if (startMinutes < 900 && endMinutes >= 1081 && endMinutes <= 1320) {
+  // Both Shifts: start between 05:01 and 14:00 AND end between 18:00 and 22:00
+  if (startMinutes > 300 && startMinutes < 840 && endMinutes >= 1080 && endMinutes <= 1320) {
     return 'Both Shifts';
   }
 
-  return 'Day Shift';
+  // Night Shift: anything else starting after 13:59
+  if (startMinutes > 839) {
+    return 'Night Shift';
+  }
+
+  // Default to Night Shift for early morning or late night shifts
+  return 'Night Shift';
 }
 
 function convertTimeToMinutes(timeString) {
