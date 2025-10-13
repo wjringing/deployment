@@ -167,6 +167,7 @@ const DeploymentPage = ({
               <Download className="w-4 h-4" />
               PDF
             </button>
+            {/* Excel export temporarily hidden
             <button
               onClick={onExportAllExcel}
               className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -174,6 +175,7 @@ const DeploymentPage = ({
               <FileText className="w-4 h-4" />
               Excel
             </button>
+            */}
           </div>
         </div>
       </div>
@@ -388,6 +390,7 @@ const DeploymentPage = ({
               Day Shift Deployments ({dayShiftDeployments.length})
             </h2>
             <div className="flex gap-2">
+              {/* Excel export temporarily hidden
               <button
                 onClick={() => onExportShiftExcel('Day Shift')}
                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
@@ -395,6 +398,7 @@ const DeploymentPage = ({
                 <FileText className="w-3 h-3" />
                 Excel Day Shift
               </button>
+              */}
               <button
                 onClick={() => onExportPDF('day')}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
@@ -432,6 +436,7 @@ const DeploymentPage = ({
               Night Shift Deployments ({nightShiftDeployments.length})
             </h2>
             <div className="flex gap-2">
+              {/* Excel export temporarily hidden
               <button
                 onClick={() => onExportShiftExcel('Night Shift')}
                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
@@ -439,6 +444,7 @@ const DeploymentPage = ({
                 <FileText className="w-3 h-3" />
                 Excel Night Shift
               </button>
+              */}
               <button
                 onClick={() => onExportPDF('night')}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"

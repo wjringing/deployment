@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { convertTo24Hour } from './timeCalculations';
 
-export const exportEnhancedPDF = (deployments, shiftInfo, selectedDate, targets) => {
+export const exportEnhancedPDF = (deployments, shiftInfo, selectedDate, targets, exportType = 'all') => {
   // Create jsPDF instance with landscape orientation for better space utilization
   const doc = new jsPDF('landscape', 'mm', 'a4');
   
@@ -108,17 +108,30 @@ export const exportEnhancedPDF = (deployments, shiftInfo, selectedDate, targets)
   
   // Staff deployment table with dynamic sizing
   if (safeDeployments.length > 0) {
-    const staffHeaders = ['Staff Name', 'Start Time', 'End Time', 'Work Hours', 'Position', 'Secondary', 'Closing', 'Break Min'];
-    const staffData = safeDeployments.map(deployment => [
-      deployment.staff?.name || 'Unknown',
-      deployment.start_time,
-      deployment.end_time,
-      calculateWorkHours(deployment.start_time, deployment.end_time),
-      deployment.position,
-      deployment.secondary || '',
-      deployment.closing || '',
-      deployment.break_minutes || 0
-    ]);
+    // Hide Closing column for Day Shift exports
+    const isDayShift = exportType === 'day';
+    const staffHeaders = isDayShift
+      ? ['Staff Name', 'Start Time', 'End Time', 'Work Hours', 'Position', 'Secondary', 'Break Min']
+      : ['Staff Name', 'Start Time', 'End Time', 'Work Hours', 'Position', 'Secondary', 'Closing', 'Break Min'];
+
+    const staffData = safeDeployments.map(deployment => {
+      const baseData = [
+        deployment.staff?.name || 'Unknown',
+        deployment.start_time,
+        deployment.end_time,
+        calculateWorkHours(deployment.start_time, deployment.end_time),
+        deployment.position,
+        deployment.secondary || ''
+      ];
+
+      // Only add Closing column for non-day shift exports
+      if (!isDayShift) {
+        baseData.push(deployment.closing || '');
+      }
+
+      baseData.push(deployment.break_minutes || 0);
+      return baseData;
+    });
 
     // Calculate dynamic row height based on available space (more generous spacing)
     const availableTableHeight = usableHeight - (yPosition - margin) - 60; // Reserve 60mm for targets and notes
@@ -141,7 +154,15 @@ export const exportEnhancedPDF = (deployments, shiftInfo, selectedDate, targets)
         cellPadding: 1,
         minCellHeight: maxRowHeight
       },
-      columnStyles: {
+      columnStyles: isDayShift ? {
+        0: { cellWidth: usableWidth * 0.22 }, // Staff Name - 22%
+        1: { cellWidth: usableWidth * 0.12 }, // Start Time - 12%
+        2: { cellWidth: usableWidth * 0.12 }, // End Time - 12%
+        3: { cellWidth: usableWidth * 0.10 }, // Work Hours - 10%
+        4: { cellWidth: usableWidth * 0.18 }, // Position - 18%
+        5: { cellWidth: usableWidth * 0.18 }, // Secondary - 18%
+        6: { cellWidth: usableWidth * 0.08 }  // Break Min - 8%
+      } : {
         0: { cellWidth: usableWidth * 0.20 }, // Staff Name - 20%
         1: { cellWidth: usableWidth * 0.10 }, // Start Time - 10%
         2: { cellWidth: usableWidth * 0.10 }, // End Time - 10%
@@ -221,8 +242,9 @@ export const exportEnhancedPDF = (deployments, shiftInfo, selectedDate, targets)
 
   // Generate filename
   const dateStr = selectedDate.replace(/\//g, '-');
-  const filename = `Deployment-Schedule-${dateStr}.pdf`;
-  
+  const shiftSuffix = exportType === 'day' ? '-Day-Shift' : exportType === 'night' ? '-Night-Shift' : '';
+  const filename = `Deployment-Schedule-${dateStr}${shiftSuffix}.pdf`;
+
   // Save the PDF
   doc.save(filename);
 };

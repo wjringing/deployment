@@ -539,8 +539,16 @@ const DeploymentManagementSystem = ({ onLogout }) => {
 
   const handleExportPDF = (exportType = 'all') => {
     try {
+      // Filter deployments based on export type
+      let deploymentsToExport = currentDeployments;
+      if (exportType === 'day') {
+        deploymentsToExport = currentDeployments.filter(d => d.shift_type === 'Day Shift' || d.shift_type === 'Both Shifts');
+      } else if (exportType === 'night') {
+        deploymentsToExport = currentDeployments.filter(d => d.shift_type === 'Night Shift' || d.shift_type === 'Both Shifts');
+      }
+
       import('../utils/enhancedPdfExport').then(({ exportEnhancedPDF }) => {
-        exportEnhancedPDF(currentDeployments, currentShiftInfo, selectedDate, supabaseTargets);
+        exportEnhancedPDF(deploymentsToExport, currentShiftInfo, selectedDate, supabaseTargets, exportType);
       });
     } catch (error) {
       setUiError('Failed to export PDF: ' + error.message);
