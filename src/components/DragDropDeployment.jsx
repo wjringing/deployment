@@ -115,7 +115,9 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
   const generatePositionCategories = () => {
     const areas = positions.filter(p => p.type === 'area');
     const categories = {};
-    
+
+    console.log('🏗️ Building categories from areas:', areas.map(a => ({ id: a.id, name: a.name })));
+
     // Define icon mapping for areas
     const areaIcons = {
       'Kitchen': ChefHat,
@@ -127,7 +129,7 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
       'Float': Target,
       'Packing': UserCheck
     };
-    
+
     // Define color mapping for areas
     const areaColors = {
       'Kitchen': 'bg-orange-100 border-orange-300 text-orange-800',
@@ -139,13 +141,23 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
       'Float': 'bg-purple-100 border-purple-300 text-purple-800',
       'Packing': 'bg-green-100 border-green-300 text-green-800'
     };
-    
+
     // Sort areas by display_order first
     areas.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).forEach(area => {
+      console.log(`🔍 Processing area: ${area.name} (ID: ${area.id})`);
+
       const areaPositions = positions
-        .filter(p => p.area_id === area.id && p.type === 'position')
+        .filter(p => {
+          const matches = p.area_id === area.id && p.type === 'position';
+          if (p.type === 'position') {
+            console.log(`  📍 Position "${p.name}": area_id=${p.area_id}, looking for=${area.id}, matches=${matches}`);
+          }
+          return matches;
+        })
         .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-      
+
+      console.log(`  ✅ Found ${areaPositions.length} positions for ${area.name}`);
+
       if (areaPositions.length > 0) {
         categories[area.id] = {
           name: area.name,
@@ -153,11 +165,12 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
           positions: areaPositions.map(p => p.name),
           color: areaColors[area.name] || 'bg-gray-100 border-gray-300 text-gray-800'
         };
+        console.log(`  ✨ Created category for ${area.name}:`, categories[area.id]);
       }
     });
-    
-    // Don't include unassigned positions - they should all be assigned to areas
-    
+
+    console.log('🎉 Final categories:', categories);
+
     return categories;
   };
   
