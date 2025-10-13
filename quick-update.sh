@@ -87,7 +87,7 @@ echo ""
 
 echo -e "${YELLOW}Step 3/5: Installing dependencies...${NC}"
 cd "$APP_DIR"
-npm install --production
+npm install
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 echo ""
 
