@@ -49,10 +49,12 @@ export function parseShiftSchedule(pdfText) {
     'Rachel Llewellyn': 'Team Member Deployment',
     'SAMANTHA EDWARDS': 'Team Member Deployment',
     'Stanislaw Wasinski': 'Team Member Deployment',
+    'Susan Richards': 'Team Member Deployment',
     'Thomas Robinson': 'Team Member Deployment',
     'Brandon Riding': 'Cook Deployment',
     'Callum Nurse': 'Cook Deployment',
     'Dylan Morris': 'Cook Deployment',
+    'Shane Whiteley': 'Cook Deployment',
     'Thomas Lewis': 'Cook Deployment'
   };
 
