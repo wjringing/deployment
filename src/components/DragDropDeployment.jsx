@@ -58,6 +58,7 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
       const deploymentsToRecall = currentDeployments.filter(d => d.shift_type === selectedShiftType);
 
       console.log('🔄 Recalling deployments:', deploymentsToRecall.length);
+      console.log('📋 Deployments to recall:', deploymentsToRecall);
 
       // Move each deployment to workspace (same as Edit)
       for (const deployment of deploymentsToRecall) {
@@ -81,6 +82,7 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
         };
 
         setDeploymentRows(prev => [...prev, newRow]);
+        console.log('➕ Added row to workspace:', newRow);
 
         // Remove from database
         await removeDeployment(deployment.id);
@@ -340,9 +342,19 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
   const saveDeployments = async () => {
     try {
       setUiLoading(true);
-      
+
+      console.log('🔍 Current deployment rows:', deploymentRows);
+
       const deploymentsToSave = deploymentRows
-        .filter(row => row.staff && row.position && row.shiftTime)
+        .filter(row => {
+          const hasStaff = row.staff && row.staff.id;
+          const hasShiftTime = row.shiftTime && row.shiftTime.startTime && row.shiftTime.endTime;
+          const hasPosition = row.position !== undefined && row.position !== null;
+
+          console.log(`📝 Row ${row.id}:`, { hasStaff, hasShiftTime, hasPosition, staff: row.staff?.name, position: row.position, shiftTime: row.shiftTime });
+
+          return hasStaff && hasShiftTime && hasPosition;
+        })
         .map(row => ({
           date: selectedDate,
           staff_id: row.staff.id,
