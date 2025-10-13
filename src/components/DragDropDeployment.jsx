@@ -172,6 +172,23 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
 
     console.log('🎉 Final categories:', categories);
 
+    // Add pack positions that don't have an area_id as a separate category
+    const packPositions = positions
+      .filter(p => p.type === 'pack_position' && !p.area_id)
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+    if (packPositions.length > 0) {
+      categories['packing'] = {
+        name: 'Packing',
+        icon: UserCheck,
+        positions: packPositions.map(p => p.name),
+        color: 'bg-indigo-100 border-indigo-300 text-indigo-800'
+      };
+      console.log('  ✨ Created Packing category:', categories['packing']);
+    }
+
+    console.log('🎉 Final categories with pack positions:', categories);
+
     return categories;
   };
   
