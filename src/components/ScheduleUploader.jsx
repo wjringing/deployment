@@ -135,7 +135,7 @@ export default function ScheduleUploader() {
       setUploadStatus('Auto-assigning to deployments...');
       const assignResults = await autoAssignScheduleToDeployments(
         scheduleRecord.id,
-        weekStartDate.toISOString().split('T')[0]
+        weekStartDate
       );
 
       setAutoAssignResults({
