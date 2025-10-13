@@ -148,9 +148,10 @@ const DragDropDeployment = ({ onBack, templateShifts = [], uiLoading, setUiLoadi
 
       const areaPositions = positions
         .filter(p => {
-          const matches = p.area_id === area.id && p.type === 'position';
-          if (p.type === 'position') {
-            console.log(`  📍 Position "${p.name}": area_id=${p.area_id}, looking for=${area.id}, matches=${matches}`);
+          const isPositionType = p.type === 'position' || p.type === 'pack_position';
+          const matches = p.area_id === area.id && isPositionType;
+          if (isPositionType) {
+            console.log(`  📍 Position "${p.name}": type=${p.type}, area_id=${p.area_id}, looking for=${area.id}, matches=${matches}`);
           }
           return matches;
         })
