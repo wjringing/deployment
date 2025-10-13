@@ -45,16 +45,33 @@ export const exportToPDF = (deployments, shiftInfo, selectedDate, exportType = '
   
   // Helper function to calculate work hours
   const calculateWorkHours = (startTime, endTime) => {
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    
+    if (!startTime || !endTime || typeof startTime !== 'string' || typeof endTime !== 'string') {
+      return '0.0';
+    }
+
+    const startParts = startTime.split(':');
+    const endParts = endTime.split(':');
+
+    if (startParts.length !== 2 || endParts.length !== 2) {
+      return '0.0';
+    }
+
+    const startHour = parseInt(startParts[0]);
+    const startMin = parseInt(startParts[1]);
+    const endHour = parseInt(endParts[0]);
+    const endMin = parseInt(endParts[1]);
+
+    if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+      return '0.0';
+    }
+
     let start = startHour + startMin / 60;
     let end = endHour + endMin / 60;
-    
+
     if (end < start) {
       end += 24;
     }
-    
+
     return (end - start).toFixed(1);
   };
   
