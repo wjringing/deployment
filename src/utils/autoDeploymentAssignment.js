@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { classifyShift } from './scheduleParser';
+import { calculateWorkHours, calculateBreakTime } from './timeCalculations';
 
 export async function autoAssignScheduleToDeployments(scheduleId, weekStartDate) {
   try {
@@ -131,6 +132,15 @@ async function createDeployment(shift, shiftType, shiftDate) {
       return null;
     }
 
+    const { data: staffMember } = await supabase
+      .from('staff')
+      .select('is_under_18')
+      .eq('id', shift.schedule_employees.staff_id)
+      .maybeSingle();
+
+    const workHours = calculateWorkHours(shift.start_time, shift.end_time);
+    const breakMinutes = calculateBreakTime(staffMember, workHours);
+
     const { data: deployment, error } = await supabase
       .from('deployments')
       .insert({
@@ -143,7 +153,7 @@ async function createDeployment(shift, shiftType, shiftDate) {
         secondary: '',
         area: '',
         closing: '',
-        break_minutes: 0
+        break_minutes: breakMinutes
       })
       .select()
       .single();
