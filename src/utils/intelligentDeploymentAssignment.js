@@ -585,31 +585,49 @@ export async function updateAssignmentConfig(updates) {
 }
 
 /**
- * Find secondary position for staff based on their secondary position assignments
+ * Find secondary position for staff based on position mappings
  */
-async function findSecondaryPosition(staffId, primaryPosition, date, shiftType) {
+async function findSecondaryPosition(staffId, primaryPositionName, date, shiftType) {
   try {
-    const { data: secondaryPositions } = await supabase
-      .from('staff_secondary_positions')
-      .select('secondary_position, priority')
-      .eq('staff_id', staffId)
-      .eq('is_active', true)
+    const { data: primaryPos } = await supabase
+      .from('positions')
+      .select('id')
+      .eq('name', primaryPositionName)
+      .eq('type', 'position')
+      .maybeSingle();
+
+    if (!primaryPos) return null;
+
+    const { data: mappings } = await supabase
+      .from('position_secondary_mappings')
+      .select(`
+        priority,
+        secondary_position:secondary_position_id (
+          id,
+          name
+        )
+      `)
+      .eq('primary_position_id', primaryPos.id)
+      .eq('is_enabled', true)
+      .eq('auto_deploy', true)
+      .or(`shift_type.eq.${shiftType},shift_type.eq.Both`)
       .order('priority');
 
-    if (!secondaryPositions || secondaryPositions.length === 0) {
+    if (!mappings || mappings.length === 0) {
       return null;
     }
 
-    for (const sp of secondaryPositions) {
-      if (sp.secondary_position === primaryPosition) continue;
+    for (const mapping of mappings) {
+      const secondaryPosName = mapping.secondary_position?.name;
+      if (!secondaryPosName || secondaryPosName === primaryPositionName) continue;
 
-      const available = await isPositionAvailable(sp.secondary_position, date, shiftType);
+      const available = await isPositionAvailable(secondaryPosName, date, shiftType);
       if (available) {
-        return sp.secondary_position;
+        return secondaryPosName;
       }
     }
 
-    return secondaryPositions[0]?.secondary_position || null;
+    return mappings[0]?.secondary_position?.name || null;
   } catch (error) {
     console.error('Error finding secondary position:', error);
     return null;
@@ -617,36 +635,47 @@ async function findSecondaryPosition(staffId, primaryPosition, date, shiftType) 
 }
 
 /**
- * Find closing position for staff based on their closing station training
+ * Find closing position for staff based on their closing training
  */
 async function findClosingPosition(staffId, date, shiftType) {
   try {
-    const { data: closingStations } = await supabase
-      .from('staff_closing_stations')
-      .select('closing_station')
+    const { data: closingTraining } = await supabase
+      .from('staff_closing_training')
+      .select(`
+        position:position_id (
+          id,
+          name
+        )
+      `)
       .eq('staff_id', staffId)
-      .eq('is_qualified', true);
+      .eq('is_trained', true);
 
-    if (!closingStations || closingStations.length === 0) {
+    if (!closingTraining || closingTraining.length === 0) {
       return null;
     }
 
-    const closingStation = closingStations[0].closing_station;
+    const trainedPositionIds = closingTraining
+      .map(ct => ct.position?.id)
+      .filter(Boolean);
 
-    const { data: mappings } = await supabase
-      .from('station_position_mappings')
-      .select('position')
-      .eq('station_id', (
-        await supabase
-          .from('stations')
-          .select('id')
-          .eq('station_name', closingStation)
-          .maybeSingle()
-      ).data?.id)
-      .eq('is_primary', true)
+    if (trainedPositionIds.length === 0) return null;
+
+    const { data: closingConfig } = await supabase
+      .from('closing_position_config')
+      .select(`
+        deployable_position:deployable_position_id (
+          id,
+          name
+        )
+      `)
+      .in('cleaning_area_position_id', trainedPositionIds)
+      .eq('is_active', true)
+      .or(`shift_type.eq.${shiftType},shift_type.eq.Night Shift,shift_type.eq.Both`)
+      .order('priority')
+      .limit(1)
       .maybeSingle();
 
-    return mappings?.position || null;
+    return closingConfig?.deployable_position?.name || null;
   } catch (error) {
     console.error('Error finding closing position:', error);
     return null;
