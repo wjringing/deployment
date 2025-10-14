@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Edit2, Save, X, AlertCircle, CheckCircle, Shield, Settings, List, Target } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, AlertCircle, CheckCircle, Shield, Settings, List, Target, Wand2, HelpCircle } from 'lucide-react';
+import SimpleRuleBuilder from './SimpleRuleBuilder';
+import RuleBuilderHelp from './RuleBuilderHelp';
+import RuleCard from './RuleCard';
 
 const RuleManagementPage = () => {
   const [activeTab, setActiveTab] = useState('core');
@@ -15,6 +18,8 @@ const RuleManagementPage = () => {
   const [editingCorePosition, setEditingCorePosition] = useState(null);
   const [editingRule, setEditingRule] = useState(null);
   const [editingRequirement, setEditingRequirement] = useState(null);
+  const [useSimpleBuilder, setUseSimpleBuilder] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     loadAllData();
@@ -410,25 +415,54 @@ const RuleManagementPage = () => {
           <h3 className="text-lg font-semibold">Conditional Staffing Rules</h3>
           <p className="text-sm text-gray-600">Define rules that apply based on operational conditions</p>
         </div>
-        <button
-          onClick={() => setEditingRule({
-            id: 'new-' + Date.now(),
-            rule_name: '',
-            rule_type: 'require_position',
-            condition: { dt_type: 'DT1' },
-            action: { require_position: '', count: 1 },
-            priority: 1,
-            description: '',
-            is_active: true
-          })}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Rule
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="text-sm px-3 py-2 rounded-lg border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 flex items-center gap-2 transition"
+            title="Show Help Guide"
+          >
+            <HelpCircle className="w-4 h-4" />
+            Help
+          </button>
+          <button
+            onClick={() => setUseSimpleBuilder(!useSimpleBuilder)}
+            className="text-sm px-3 py-2 rounded-lg border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 flex items-center gap-2 transition"
+            title={useSimpleBuilder ? 'Switch to Advanced Mode' : 'Switch to Simple Mode'}
+          >
+            <Wand2 className="w-4 h-4" />
+            {useSimpleBuilder ? 'Advanced' : 'Simple'}
+          </button>
+          <button
+            onClick={() => setEditingRule({
+              id: 'new-' + Date.now(),
+              rule_name: '',
+              rule_type: 'require_position',
+              condition: { dt_type: 'DT1' },
+              action: { require_position: '', count: 1 },
+              priority: 1,
+              description: '',
+              is_active: true
+            })}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Rule
+          </button>
+        </div>
       </div>
 
-      {editingRule && (
+      {showHelp && <RuleBuilderHelp />}
+
+      {editingRule && useSimpleBuilder && (
+        <SimpleRuleBuilder
+          onSave={handleSaveConditionalRule}
+          onCancel={() => setEditingRule(null)}
+          allPositions={allPositions}
+          existingRule={editingRule.id && !editingRule.id.toString().startsWith('new-') ? editingRule : null}
+        />
+      )}
+
+      {editingRule && !useSimpleBuilder && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
           <h4 className="font-semibold mb-3">
             {editingRule.id.startsWith('new-') ? 'Add New' : 'Edit'} Conditional Rule
@@ -531,67 +565,16 @@ const RuleManagementPage = () => {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {conditionalRules.map((rule) => (
-          <div
+          <RuleCard
             key={rule.id}
-            className={`p-4 border rounded-lg ${rule.is_active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-300 opacity-60'}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-semibold">{rule.rule_name}</span>
-                  <span className="text-sm px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                    {rule.rule_type}
-                  </span>
-                  <span className="text-sm px-2 py-1 bg-gray-100 text-gray-800 rounded">
-                    Priority: {rule.priority}
-                  </span>
-                  {!rule.is_active && (
-                    <span className="text-sm px-2 py-1 bg-gray-100 text-gray-600 rounded">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600 mt-1">{rule.description}</p>
-                <div className="mt-2 flex gap-4 text-xs">
-                  <div>
-                    <span className="font-semibold">Condition:</span>
-                    <pre className="mt-1 p-2 bg-gray-100 rounded">{JSON.stringify(rule.condition, null, 2)}</pre>
-                  </div>
-                  <div>
-                    <span className="font-semibold">Action:</span>
-                    <pre className="mt-1 p-2 bg-gray-100 rounded">{JSON.stringify(rule.action, null, 2)}</pre>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 ml-4">
-                <button
-                  onClick={() => handleToggleActive('conditional_staffing_rules', rule.id, rule.is_active)}
-                  className={`px-3 py-1 rounded text-sm ${
-                    rule.is_active
-                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                      : 'bg-green-100 text-green-800 hover:bg-green-200'
-                  }`}
-                >
-                  {rule.is_active ? 'Deactivate' : 'Activate'}
-                </button>
-                <button
-                  onClick={() => setEditingRule(rule)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteConditionalRule(rule.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+            rule={rule}
+            onEdit={setEditingRule}
+            onDelete={handleDeleteConditionalRule}
+            onToggleActive={handleToggleActive}
+            showTechnical={!useSimpleBuilder}
+          />
         ))}
 
         {conditionalRules.length === 0 && (
