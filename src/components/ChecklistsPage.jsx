@@ -362,6 +362,82 @@ export default function ChecklistsPage() {
     );
   }
 
+  const handlePrintAll = async () => {
+    try {
+      const { data: allTemplates, error } = await supabase
+        .from('checklist_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+
+      const printWindow = window.open('', '', 'width=800,height=600');
+      printWindow.document.write('<html><head><title>All Checklists</title>');
+      printWindow.document.write('<style>');
+      printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
+      printWindow.document.write('h1 { color: #d32f2f; margin-bottom: 10px; }');
+      printWindow.document.write('h2 { color: #333; margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #d32f2f; padding-bottom: 5px; }');
+      printWindow.document.write('.checklist { page-break-after: always; margin-bottom: 40px; }');
+      printWindow.document.write('.item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }');
+      printWindow.document.write('.critical { background-color: #ffebee; border-left: 4px solid #d32f2f; }');
+      printWindow.document.write('.checkbox { display: inline-block; width: 20px; height: 20px; border: 2px solid #333; margin-right: 10px; vertical-align: middle; }');
+      printWindow.document.write('.metadata { color: #666; font-size: 12px; margin-top: 5px; }');
+      printWindow.document.write('@media print { .checklist { page-break-after: always; } }');
+      printWindow.document.write('</style></head><body>');
+      printWindow.document.write(`<h1>KFC Shift Checklists - ${selectedDate} (${selectedShift})</h1>`);
+
+      for (const template of allTemplates) {
+        const { data: items } = await supabase
+          .from('checklist_items')
+          .select('*')
+          .eq('checklist_template_id', template.id)
+          .order('display_order');
+
+        printWindow.document.write('<div class="checklist">');
+        printWindow.document.write(`<h2>${template.name}</h2>`);
+        printWindow.document.write(`<p><strong>Type:</strong> ${template.checklist_type} | <strong>Area:</strong> ${template.area}</p>`);
+        if (template.description) {
+          printWindow.document.write(`<p>${template.description}</p>`);
+        }
+
+        if (items && items.length > 0) {
+          items.forEach((item, index) => {
+            const itemClass = item.is_critical ? 'item critical' : 'item';
+            printWindow.document.write(`<div class="${itemClass}">`);
+            printWindow.document.write(`<span class="checkbox"></span>`);
+            printWindow.document.write(`<strong>${index + 1}. ${item.item_text}</strong>`);
+            if (item.is_critical) {
+              printWindow.document.write(' <span style="color: #d32f2f; font-weight: bold;">[CRITICAL]</span>');
+            }
+            printWindow.document.write('<div class="metadata">');
+            printWindow.document.write(`Est. Time: ${item.estimated_minutes} min`);
+            if (item.requires_manager_verification) {
+              printWindow.document.write(' | Manager Verification Required');
+            }
+            printWindow.document.write('</div></div>');
+          });
+        } else {
+          printWindow.document.write('<p><em>No items in this checklist</em></p>');
+        }
+
+        printWindow.document.write('</div>');
+      }
+
+      printWindow.document.write('<div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #333;">');
+      printWindow.document.write('<p><strong>Completed By:</strong> ___________________________ <strong>Date:</strong> _______________</p>');
+      printWindow.document.write('<p><strong>Verified By (Manager):</strong> ___________________________ <strong>Time:</strong> _______________</p>');
+      printWindow.document.write('</div>');
+
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error('Error printing checklists:', error);
+      toast.error('Failed to generate printable checklists');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -370,6 +446,13 @@ export default function ChecklistsPage() {
           <p className="text-gray-600">Manage and complete daily operational checklists</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handlePrintAll}
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Print All
+          </Button>
           <Button
             variant={viewMode === 'manage' ? 'default' : 'outline'}
             onClick={() => setViewMode('manage')}
