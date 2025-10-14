@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Edit2, Save, X, Clock, User, MapPin, Chrome as Broom } from 'lucide-react';
+import { Trash2, Edit2, Save, X, Clock, User, MapPin, Chrome as Broom, Shield, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { calculateWorkHours } from '../utils/timeCalculations';
 
 const DeploymentCard = ({ deployment, onRemove, onUpdate }) => {
@@ -172,6 +172,22 @@ const DeploymentCard = ({ deployment, onRemove, onUpdate }) => {
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getShiftBadgeColor(deployment.shift_type)}`}>
             {deployment.shift_type}
           </span>
+          {deployment.has_secondary && (
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1" title="Secondary position assigned">
+              <CheckCircle2 className="w-3 h-3" />
+              Secondary
+            </span>
+          )}
+          {deployment.is_closing_duty && (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+              deployment.closing_validated
+                ? 'bg-blue-100 text-blue-800'
+                : 'bg-yellow-100 text-yellow-800'
+            }`} title={deployment.closing_validated ? 'Closing training validated' : 'Closing training not validated'}>
+              {deployment.closing_validated ? <Shield className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+              Closing
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <button
@@ -215,16 +231,17 @@ const DeploymentCard = ({ deployment, onRemove, onUpdate }) => {
         </div>
       </div>
 
-      {(deployment.secondary || deployment.area || deployment.closing) && (
+      {(deployment.secondary || deployment.area || deployment.closing || deployment.has_secondary || deployment.is_closing_duty) && (
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             {deployment.secondary && (
-              <div>
+              <div className="flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-green-500" />
                 <span className="text-gray-500">Secondary: </span>
-                <span className="font-medium">{deployment.secondary}</span>
+                <span className="font-medium text-green-700">{deployment.secondary}</span>
               </div>
             )}
-            
+
             {deployment.area && (
               <div className="flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-gray-400" />
@@ -232,12 +249,26 @@ const DeploymentCard = ({ deployment, onRemove, onUpdate }) => {
                 <span className="font-medium">{deployment.area}</span>
               </div>
             )}
-            
+
             {deployment.closing && deployment.shift_type === 'Night Shift' && (
               <div className="flex items-center gap-1">
                 <Broom className="w-3 h-3 text-gray-400" />
                 <span className="text-gray-500">Closing: </span>
                 <span className="font-medium">{deployment.closing}</span>
+              </div>
+            )}
+
+            {deployment.is_closing_duty && !deployment.closing && (
+              <div className="flex items-center gap-1">
+                <Shield className={`w-3 h-3 ${
+                  deployment.closing_validated ? 'text-blue-500' : 'text-yellow-500'
+                }`} />
+                <span className="text-gray-500">Closing Duty: </span>
+                <span className={`font-medium ${
+                  deployment.closing_validated ? 'text-blue-700' : 'text-yellow-700'
+                }`}>
+                  {deployment.closing_validated ? 'Validated' : 'Pending Validation'}
+                </span>
               </div>
             )}
           </div>

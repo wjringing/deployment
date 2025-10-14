@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin, Upload, Star } from 'lucide-react';
+import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin, Upload, Star, Link2 } from 'lucide-react';
 import StaffCsvImporter from './StaffCsvImporter';
 import StaffDefaultPositionsManager from './StaffDefaultPositionsManager';
+import PositionRelationshipsManager from './PositionRelationshipsManager';
 
 const SettingsPage = ({
   supabaseStaff,
@@ -65,10 +66,23 @@ const SettingsPage = ({
             <Star className="w-4 h-4" />
             Default Positions
           </button>
+          <button
+            onClick={() => setActiveTab('relationships')}
+            className={`${
+              activeTab === 'relationships'
+                ? 'border-red-500 text-red-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+          >
+            <Link2 className="w-4 h-4" />
+            Position Relationships
+          </button>
         </nav>
       </div>
 
-      {activeTab === 'defaults' ? (
+      {activeTab === 'relationships' ? (
+        <PositionRelationshipsManager />
+      ) : activeTab === 'defaults' ? (
         <StaffDefaultPositionsManager />
       ) : showCsvImporter ? (
         <div className="space-y-4">

@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { classifyShift } from './scheduleParser';
 import { calculateWorkHours, calculateBreakTime } from './timeCalculations';
+import { autoAssignSecondaryPositions } from './secondaryPositionAssignment';
+import { assignClosingStations } from './closingStationValidator';
 
 export async function autoAssignScheduleToDeployments(scheduleId, weekStartDate) {
   try {
@@ -22,7 +24,9 @@ export async function autoAssignScheduleToDeployments(scheduleId, weekStartDate)
     const results = {
       success: [],
       failed: [],
-      skipped: []
+      skipped: [],
+      secondaryAssignments: [],
+      closingAssignments: []
     };
 
     for (const shift of scheduleShifts) {
@@ -108,6 +112,41 @@ export async function autoAssignScheduleToDeployments(scheduleId, weekStartDate)
           employeeName: shift.schedule_employees?.name,
           error: error.message
         });
+      }
+    }
+
+    const datesProcessed = new Set(scheduleShifts.map(s => s.shift_date));
+
+    for (const date of datesProcessed) {
+      try {
+        const dayShifts = scheduleShifts.filter(s => s.shift_date === date && classifyShift(s.start_time, s.end_time) === 'Day Shift');
+        const nightShifts = scheduleShifts.filter(s => s.shift_date === date && classifyShift(s.start_time, s.end_time) === 'Night Shift');
+
+        if (dayShifts.length > 0) {
+          const daySecondaryResults = await autoAssignSecondaryPositions(date, 'Day Shift');
+          results.secondaryAssignments.push({
+            date,
+            shiftType: 'Day Shift',
+            ...daySecondaryResults
+          });
+        }
+
+        if (nightShifts.length > 0) {
+          const nightSecondaryResults = await autoAssignSecondaryPositions(date, 'Night Shift');
+          results.secondaryAssignments.push({
+            date,
+            shiftType: 'Night Shift',
+            ...nightSecondaryResults
+          });
+
+          const closingResults = await assignClosingStations(date, 'Night Shift');
+          results.closingAssignments.push({
+            date,
+            ...closingResults
+          });
+        }
+      } catch (error) {
+        console.error(`Error processing date ${date}:`, error);
       }
     }
 

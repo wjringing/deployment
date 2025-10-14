@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { getTrainedStaffForStation } from './trainingManager';
 import { buildAssignmentContext, getRequiredPositionsByConfig, isPositionExcluded } from './ruleEngine';
+import { validateClosingTraining, positionRequiresClosingTraining, markDeploymentAsClosing } from './closingStationValidator';
 
 const POSITION_TO_STATION_MAP = {
   'Cook': 'BOH Cook',
@@ -30,6 +31,7 @@ const POSITION_TO_STATION_MAP = {
  * 5. Training stations with rankings
  * 6. Sign-off status
  * 7. Position availability
+ * 8. Closing training validation for night shifts
  */
 export async function intelligentAutoDeployment(date, shiftType, userConfig = null) {
   try {
@@ -96,7 +98,8 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           deployment.staff,
           deployment,
           oldConfig,
-          dynamicConfig
+          dynamicConfig,
+          shiftType
         );
 
         if (position) {
@@ -108,9 +111,16 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
             continue;
           }
 
+          const updateData = { position: position.name };
+
+          if (shiftType === 'Night Shift' && position.requiresClosing) {
+            updateData.is_closing_duty = true;
+            updateData.closing_validated = position.closingValidated || false;
+          }
+
           const { error: updateError } = await supabase
             .from('deployments')
-            .update({ position: position.name })
+            .update(updateData)
             .eq('id', deployment.id);
 
           if (updateError) throw updateError;
@@ -119,7 +129,9 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
             staffName: deployment.staff.name,
             position: position.name,
             score: position.score,
-            source: position.source
+            source: position.source,
+            closingDuty: updateData.is_closing_duty || false,
+            closingValidated: updateData.closing_validated || false
           });
         } else {
           results.skipped.push({
@@ -143,7 +155,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
   }
 }
 
-async function findBestPositionForStaff(staff, deployment, config, dynamicConfig) {
+async function findBestPositionForStaff(staff, deployment, config, dynamicConfig, shiftType) {
   const candidates = [];
 
   if (config.use_default_positions) {
@@ -165,6 +177,33 @@ async function findBestPositionForStaff(staff, deployment, config, dynamicConfig
       dynamicConfig
     );
     candidates.push(...trainingCandidates);
+  }
+
+  if (shiftType === 'Night Shift') {
+    for (const candidate of candidates) {
+      const { data: position } = await supabase
+        .from('positions')
+        .select('id')
+        .eq('name', candidate.name)
+        .eq('type', 'position')
+        .maybeSingle();
+
+      if (position) {
+        const requiresClosing = await positionRequiresClosingTraining(position.id, shiftType);
+        candidate.requiresClosing = requiresClosing;
+
+        if (requiresClosing) {
+          const validation = await validateClosingTraining(staff.id, position.id);
+          candidate.closingValidated = validation.qualified;
+
+          if (!validation.qualified) {
+            candidate.score -= 500;
+          } else {
+            candidate.score += 100;
+          }
+        }
+      }
+    }
   }
 
   candidates.sort((a, b) => b.score - a.score);
