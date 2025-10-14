@@ -15,6 +15,7 @@ import Training from '../pages/Training';
 import ProtectedPageWrapper from './ProtectedPageWrapper';
 import PasswordProtectedDataProtection from './PasswordProtectedDataProtection';
 import StationPositionMappingPage from './StationPositionMappingPage';
+import RuleManagementPage from './RuleManagementPage';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
 import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon } from 'lucide-react';
 
@@ -771,6 +772,7 @@ const DeploymentManagementSystem = () => {
                   { id: 'schedule', label: 'Upload Schedule', icon: Upload },
                   { id: 'training', label: 'Training & Ranking', icon: Award },
                   { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
+                  { id: 'rule-management', label: 'Rule Management', icon: Shield },
                   { id: 'sales', label: 'Sales Data', icon: TrendingUp },
                   { id: 'settings', label: 'Settings', icon: Settings, locked: pageProtectionStatus.settingsLocked },
                   { id: 'targets', label: 'Targets', icon: Target },
@@ -899,6 +901,10 @@ const DeploymentManagementSystem = () => {
 
         {currentPage === 'station-mapping' && (
           <StationPositionMappingPage />
+        )}
+
+        {currentPage === 'rule-management' && (
+          <RuleManagementPage />
         )}
 
         {currentPage === 'sales' && (

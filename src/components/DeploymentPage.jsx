@@ -1,5 +1,6 @@
 import React from 'react';
 import DeploymentCard from './DeploymentCard';
+import DeploymentConfigModal from './DeploymentConfigModal';
 import { exportEnhancedExcel } from '../utils/enhancedExcelExport';
 import { intelligentAutoDeployment } from '../utils/intelligentDeploymentAssignment';
 import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, X, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, RefreshCw, Zap } from 'lucide-react';
@@ -48,17 +49,25 @@ const DeploymentPage = ({
 }) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [showAutoAssignModal, setShowAutoAssignModal] = React.useState(false);
+  const [showConfigModal, setShowConfigModal] = React.useState(false);
+  const [pendingShiftType, setPendingShiftType] = React.useState(null);
   const [autoAssignResults, setAutoAssignResults] = React.useState(null);
   const [autoAssigning, setAutoAssigning] = React.useState(false);
 
-  const handleAutoAssign = async (shiftType) => {
+  const handleAutoAssignClick = (shiftType) => {
+    setPendingShiftType(shiftType);
+    setShowConfigModal(true);
+  };
+
+  const handleConfigConfirm = async (config) => {
     try {
+      setShowConfigModal(false);
       setAutoAssigning(true);
-      const results = await intelligentAutoDeployment(selectedDate, shiftType);
+
+      const results = await intelligentAutoDeployment(selectedDate, pendingShiftType, config);
       setAutoAssignResults(results);
       setShowAutoAssignModal(true);
 
-      // Refresh deployments to show updated positions
       if (onRefreshData) {
         await onRefreshData();
       }
@@ -67,6 +76,7 @@ const DeploymentPage = ({
       alert('Error auto-assigning positions: ' + error.message);
     } finally {
       setAutoAssigning(false);
+      setPendingShiftType(null);
     }
   };
 
@@ -414,7 +424,7 @@ const DeploymentPage = ({
             </h2>
             <div className="flex gap-2">
               <button
-                onClick={() => handleAutoAssign('Day Shift')}
+                onClick={() => handleAutoAssignClick('Day Shift')}
                 disabled={autoAssigning || dayShiftDeployments.length === 0}
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
               >
@@ -468,7 +478,7 @@ const DeploymentPage = ({
             </h2>
             <div className="flex gap-2">
               <button
-                onClick={() => handleAutoAssign('Night Shift')}
+                onClick={() => handleAutoAssignClick('Night Shift')}
                 disabled={autoAssigning || nightShiftDeployments.length === 0}
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
               >
@@ -574,6 +584,18 @@ const DeploymentPage = ({
         </div>
       )}
 
+      {/* Configuration Modal */}
+      <DeploymentConfigModal
+        isOpen={showConfigModal}
+        onClose={() => {
+          setShowConfigModal(false);
+          setPendingShiftType(null);
+        }}
+        onConfirm={handleConfigConfirm}
+        shiftType={pendingShiftType}
+        selectedDate={selectedDate}
+      />
+
       {/* Auto-Assign Results Modal */}
       {showAutoAssignModal && autoAssignResults && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -590,6 +612,17 @@ const DeploymentPage = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {autoAssignResults.appliedRules && autoAssignResults.appliedRules.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-semibold text-blue-900 mb-1">Applied Rules:</p>
+                <ul className="text-xs text-blue-800 list-disc list-inside">
+                  {autoAssignResults.appliedRules.map((rule, idx) => (
+                    <li key={idx}>{rule}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="space-y-4">
               {autoAssignResults.assigned && autoAssignResults.assigned.length > 0 && (

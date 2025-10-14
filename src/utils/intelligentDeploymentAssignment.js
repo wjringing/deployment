@@ -1,11 +1,13 @@
 import { supabase } from '../lib/supabase';
 import { getTrainedStaffForStation } from './trainingManager';
+import { buildAssignmentContext, getRequiredPositionsByConfig, isPositionExcluded } from './ruleEngine';
 
 const POSITION_TO_STATION_MAP = {
   'Cook': 'BOH Cook',
   'Cook2': 'BOH Cook',
   'DT': 'FOH Cashier',
   'DT2': 'FOH Present',
+  'DT Presenter': 'FOH Present',
   'Front': 'FOH Cashier',
   'Mid': 'FOH Cashier',
   'Lobby': 'FOH Guest Host',
@@ -18,24 +20,26 @@ const POSITION_TO_STATION_MAP = {
 };
 
 /**
- * Intelligent Auto-Deployment Assignment System
+ * Intelligent Auto-Deployment Assignment System with Dynamic Configuration
  *
  * Automatically assigns positions to deployments based on:
- * 1. Staff default positions (highest priority)
- * 2. Training stations with rankings
- * 3. Sign-off status
- * 4. Position availability
+ * 1. Dynamic shift configuration (DT type, number of cooks, etc.)
+ * 2. Core positions that must be filled
+ * 3. Conditional staffing rules
+ * 4. Staff default positions (highest priority)
+ * 5. Training stations with rankings
+ * 6. Sign-off status
+ * 7. Position availability
  */
-export async function intelligentAutoDeployment(date, shiftType) {
+export async function intelligentAutoDeployment(date, shiftType, userConfig = null) {
   try {
-    // Get configuration
-    const { data: config } = await supabase
+    const { data: oldConfig } = await supabase
       .from('deployment_auto_assignment_config')
       .select('*')
       .eq('config_name', 'default')
       .maybeSingle();
 
-    if (!config || !config.enabled) {
+    if (!oldConfig || !oldConfig.enabled) {
       return {
         error: 'Auto-assignment is disabled',
         assigned: [],
@@ -44,7 +48,24 @@ export async function intelligentAutoDeployment(date, shiftType) {
       };
     }
 
-    // Get deployments without positions
+    const { data: shiftInfo } = await supabase
+      .from('shift_info')
+      .select('*')
+      .eq('date', date)
+      .maybeSingle();
+
+    const { config: dynamicConfig, context, appliedRules } = await buildAssignmentContext(
+      date,
+      shiftType,
+      shiftInfo
+    );
+
+    if (userConfig) {
+      Object.assign(dynamicConfig, userConfig);
+    }
+
+    const requiredPositions = await getRequiredPositionsByConfig(date, shiftType, dynamicConfig);
+
     const { data: deployments, error: deploymentsError } = await supabase
       .from('deployments')
       .select(`
@@ -63,19 +84,30 @@ export async function intelligentAutoDeployment(date, shiftType) {
     const results = {
       assigned: [],
       skipped: [],
-      failed: []
+      failed: [],
+      config: dynamicConfig,
+      appliedRules: appliedRules.map(r => r.rule_name),
+      requiredPositions: requiredPositions.map(rp => `${rp.position} (${rp.source})`)
     };
 
-    // Process each deployment
     for (const deployment of deployments || []) {
       try {
         const position = await findBestPositionForStaff(
           deployment.staff,
           deployment,
-          config
+          oldConfig,
+          dynamicConfig
         );
 
         if (position) {
+          if (isPositionExcluded(position.name, dynamicConfig)) {
+            results.skipped.push({
+              staffName: deployment.staff.name,
+              reason: `Position ${position.name} is excluded by configuration`
+            });
+            continue;
+          }
+
           const { error: updateError } = await supabase
             .from('deployments')
             .update({ position: position.name })
@@ -111,37 +143,36 @@ export async function intelligentAutoDeployment(date, shiftType) {
   }
 }
 
-async function findBestPositionForStaff(staff, deployment, config) {
+async function findBestPositionForStaff(staff, deployment, config, dynamicConfig) {
   const candidates = [];
 
-  // 1. Check default positions first (highest priority)
   if (config.use_default_positions) {
     const defaultCandidates = await getDefaultPositionCandidates(
       staff.id,
       deployment.shift_type,
-      deployment.date
+      deployment.date,
+      dynamicConfig
     );
     candidates.push(...defaultCandidates);
   }
 
-  // 2. If no default positions or none available, check training stations
   if (config.use_training_stations && candidates.length === 0) {
     const trainingCandidates = await getTrainingBasedCandidates(
       staff.id,
       deployment.shift_type,
       deployment.date,
-      config
+      config,
+      dynamicConfig
     );
     candidates.push(...trainingCandidates);
   }
 
-  // 3. Sort by score and return best
   candidates.sort((a, b) => b.score - a.score);
 
   return candidates[0] || null;
 }
 
-async function getDefaultPositionCandidates(staffId, shiftType, date) {
+async function getDefaultPositionCandidates(staffId, shiftType, date, dynamicConfig) {
   const candidates = [];
 
   try {
@@ -192,7 +223,7 @@ async function getDefaultPositionCandidates(staffId, shiftType, date) {
   return candidates;
 }
 
-async function getTrainingBasedCandidates(staffId, shiftType, date, config) {
+async function getTrainingBasedCandidates(staffId, shiftType, date, config, dynamicConfig) {
   const candidates = [];
 
   try {
