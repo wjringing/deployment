@@ -20,8 +20,11 @@ import ChecklistsPage from './ChecklistsPage';
 import HandoverNotesPage from './HandoverNotesPage';
 import StaffLocationPage from './StaffLocationPage';
 import BreakSchedulerPage from './BreakSchedulerPage';
+import LaborSalesCalculatorPage from './LaborSalesCalculatorPage';
+import PerformanceScorecardPage from './PerformanceScorecardPage';
+import AutoAssignmentRulesPage from './AutoAssignmentRulesPage';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3 } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
   const handleLogout = async () => {
@@ -778,9 +781,12 @@ const DeploymentManagementSystem = () => {
                   { id: 'handover', label: 'Handover Notes', icon: MessageSquare },
                   { id: 'location', label: 'Location Board', icon: Navigation },
                   { id: 'breaks', label: 'Break Scheduler', icon: Coffee },
+                  { id: 'labor-calc', label: 'Labor Calculator', icon: Calculator },
+                  { id: 'performance', label: 'Performance', icon: BarChart3 },
                   { id: 'training', label: 'Training & Ranking', icon: Award },
                   { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
                   { id: 'rule-management', label: 'Rule Management', icon: Shield },
+                  { id: 'auto-rules', label: 'Auto-Assignment Rules', icon: Settings },
                   { id: 'sales', label: 'Sales Data', icon: TrendingUp },
                   { id: 'settings', label: 'Settings', icon: Settings, locked: pageProtectionStatus.settingsLocked },
                   { id: 'targets', label: 'Targets', icon: Target },
@@ -919,6 +925,14 @@ const DeploymentManagementSystem = () => {
           <BreakSchedulerPage />
         )}
 
+        {currentPage === 'labor-calc' && (
+          <LaborSalesCalculatorPage />
+        )}
+
+        {currentPage === 'performance' && (
+          <PerformanceScorecardPage />
+        )}
+
         {currentPage === 'training' && (
           <Training embedded={true} />
         )}
@@ -929,6 +943,10 @@ const DeploymentManagementSystem = () => {
 
         {currentPage === 'rule-management' && (
           <RuleManagementPage />
+        )}
+
+        {currentPage === 'auto-rules' && (
+          <AutoAssignmentRulesPage />
         )}
 
         {currentPage === 'sales' && (

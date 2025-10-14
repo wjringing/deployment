@@ -1,26 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Link, Trash2, Plus, Save, RefreshCw } from 'lucide-react';
-
-const STATIONS = [
-  { name: 'BOH Cook', category: 'BOH' },
-  { name: 'FOH Cashier', category: 'FOH' },
-  { name: 'FOH Guest Host', category: 'FOH' },
-  { name: 'FOH Pack', category: 'FOH' },
-  { name: 'FOH Present', category: 'FOH' },
-  { name: 'MOH Burgers', category: 'MOH' },
-  { name: 'MOH Chicken Pack', category: 'MOH' },
-  { name: 'Freezer to Fryer', category: 'MOH' },
-  { name: 'MOH Sides', category: 'MOH' },
-];
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { toast } from 'sonner';
+import { Link, Trash2, Plus, Save, RefreshCw, MapPin, Edit } from 'lucide-react';
 
 export default function StationPositionMappingPage() {
-  const [selectedStation, setSelectedStation] = useState(STATIONS[0].name);
+  const [stations, setStations] = useState([]);
+  const [selectedStation, setSelectedStation] = useState(null);
   const [mappings, setMappings] = useState([]);
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [editingStation, setEditingStation] = useState(null);
+  const [newStationName, setNewStationName] = useState('');
+  const [newStationCode, setNewStationCode] = useState('');
 
   useEffect(() => {
     loadData();
@@ -36,316 +32,318 @@ export default function StationPositionMappingPage() {
     try {
       setLoading(true);
 
-      const { data: positionsData, error: posError } = await supabase
-        .from('positions')
-        .select('*')
-        .eq('type', 'position')
-        .order('name');
+      const [stationsRes, positionsRes] = await Promise.all([
+        supabase
+          .from('stations')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order'),
+        supabase
+          .from('positions')
+          .select('*')
+          .eq('type', 'position')
+          .order('name')
+      ]);
 
-      if (posError) throw posError;
+      if (stationsRes.error) throw stationsRes.error;
+      if (positionsRes.error) throw positionsRes.error;
 
-      setPositions(positionsData || []);
+      setStations(stationsRes.data || []);
+      setPositions(positionsRes.data || []);
+
+      if (stationsRes.data && stationsRes.data.length > 0 && !selectedStation) {
+        setSelectedStation(stationsRes.data[0].id);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
-      setMessage('Error loading positions');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadMappingsForStation = async (stationName) => {
+  const loadMappingsForStation = async (stationId) => {
     try {
       const { data, error } = await supabase
         .from('station_position_mappings')
-        .select(`
-          id,
-          station_name,
-          station_category,
-          priority,
-          notes,
-          positions (
-            id,
-            name
-          )
-        `)
-        .eq('station_name', stationName)
-        .order('priority');
+        .select('*')
+        .eq('station_id', stationId)
+        .order('created_at');
 
       if (error) throw error;
 
       setMappings(data || []);
     } catch (error) {
       console.error('Error loading mappings:', error);
-      setMessage('Error loading mappings');
+      toast.error('Failed to load mappings');
     }
   };
 
-  const addMapping = () => {
-    const newMapping = {
-      id: null,
-      station_name: selectedStation,
-      station_category: STATIONS.find(s => s.name === selectedStation)?.category || 'FOH',
-      position_id: positions[0]?.id || '',
-      priority: mappings.length + 1,
-      notes: '',
-      positions: positions[0] || { id: '', name: '' },
-      isNew: true
-    };
-
-    setMappings([...mappings, newMapping]);
-  };
-
-  const removeMapping = (index) => {
-    const newMappings = [...mappings];
-    newMappings.splice(index, 1);
-    // Re-calculate priorities
-    newMappings.forEach((m, i) => {
-      m.priority = i + 1;
-    });
-    setMappings(newMappings);
-  };
-
-  const updateMapping = (index, field, value) => {
-    const newMappings = [...mappings];
-
-    if (field === 'position_id') {
-      const selectedPos = positions.find(p => p.id === value);
-      newMappings[index].position_id = value;
-      newMappings[index].positions = selectedPos || { id: '', name: '' };
-    } else {
-      newMappings[index][field] = value;
+  const addMapping = async () => {
+    if (!selectedStation || positions.length === 0) {
+      toast.error('Please select a station and ensure positions exist');
+      return;
     }
 
-    setMappings(newMappings);
-  };
-
-  const saveMappings = async () => {
     try {
-      setSaving(true);
-      setMessage('');
+      const newMapping = {
+        station_id: selectedStation,
+        position: positions[0].name,
+        is_primary: mappings.length === 0
+      };
 
-      // Delete existing mappings for this station
-      const { error: deleteError } = await supabase
+      const { error } = await supabase
+        .from('station_position_mappings')
+        .insert([newMapping]);
+
+      if (error) throw error;
+
+      toast.success('Position mapping added');
+      loadMappingsForStation(selectedStation);
+    } catch (error) {
+      console.error('Error adding mapping:', error);
+      toast.error('Failed to add mapping');
+    }
+  };
+
+  const removeMapping = async (id) => {
+    if (!confirm('Are you sure you want to remove this mapping?')) return;
+
+    try {
+      const { error } = await supabase
         .from('station_position_mappings')
         .delete()
-        .eq('station_name', selectedStation);
+        .eq('id', id);
 
-      if (deleteError) throw deleteError;
+      if (error) throw error;
 
-      // Insert new mappings
-      if (mappings.length > 0) {
-        const mappingsToInsert = mappings.map(m => ({
-          station_name: m.station_name,
-          station_category: m.station_category,
-          position_id: m.position_id || m.positions.id,
-          priority: m.priority,
-          notes: m.notes || ''
-        }));
-
-        const { error: insertError } = await supabase
-          .from('station_position_mappings')
-          .insert(mappingsToInsert);
-
-        if (insertError) throw insertError;
-      }
-
-      setMessage('Mappings saved successfully!');
-
-      // Reload to get fresh data with IDs
-      await loadMappingsForStation(selectedStation);
-
-      setTimeout(() => setMessage(''), 3000);
+      toast.success('Mapping removed');
+      loadMappingsForStation(selectedStation);
     } catch (error) {
-      console.error('Error saving mappings:', error);
-      setMessage('Error saving mappings: ' + error.message);
-    } finally {
-      setSaving(false);
+      console.error('Error removing mapping:', error);
+      toast.error('Failed to remove mapping');
     }
   };
 
-  const getStationCategory = (stationName) => {
-    return STATIONS.find(s => s.name === stationName)?.category || '';
+  const updateMapping = async (id, field, value) => {
+    try {
+      const { error } = await supabase
+        .from('station_position_mappings')
+        .update({ [field]: value })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Mapping updated');
+      loadMappingsForStation(selectedStation);
+    } catch (error) {
+      console.error('Error updating mapping:', error);
+      toast.error('Failed to update mapping');
+    }
+  };
+
+  const handleAddStation = async () => {
+    if (!newStationName || !newStationCode) {
+      toast.error('Please enter station name and code');
+      return;
+    }
+
+    try {
+      const maxOrder = Math.max(...stations.map(s => s.display_order), 0);
+      const { error } = await supabase
+        .from('stations')
+        .insert([{
+          station_name: newStationName,
+          station_code: newStationCode,
+          display_order: maxOrder + 1
+        }]);
+
+      if (error) throw error;
+
+      toast.success('Station added successfully');
+      setNewStationName('');
+      setNewStationCode('');
+      loadData();
+    } catch (error) {
+      console.error('Error adding station:', error);
+      toast.error('Failed to add station');
+    }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+        <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
       </div>
     );
   }
 
+  const currentStation = stations.find(s => s.id === selectedStation);
+
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Link className="w-7 h-7 text-red-600" />
-              Station-Position Mapping
-            </h2>
-            <p className="text-gray-600 mt-1">
-              Configure which training stations map to which deployment positions
-            </p>
-          </div>
-          <button
-            onClick={loadData}
-            className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100"
-            title="Refresh"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <MapPin className="h-8 w-8" />
+            Station-Position Mapping
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Configure which positions are available at each station
+          </p>
         </div>
-
-        {message && (
-          <div className={`mb-4 p-4 rounded-lg ${
-            message.includes('Error') ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'
-          }`}>
-            {message}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Training Station
-            </label>
-            <select
-              value={selectedStation}
-              onChange={(e) => setSelectedStation(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            >
-              {STATIONS.map(station => (
-                <option key={station.name} value={station.name}>
-                  {station.name} ({station.category})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Mapped Positions
-              </h3>
-              <button
-                onClick={addMapping}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Position
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {mappings.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No positions mapped yet. Click "Add Position" to get started.
-                </div>
-              ) : (
-                mappings.map((mapping, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex-shrink-0 w-24">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Priority
-                      </label>
-                      <input
-                        type="number"
-                        value={mapping.priority}
-                        onChange={(e) => updateMapping(index, 'priority', parseInt(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-                        min="1"
-                      />
-                    </div>
-
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Position
-                      </label>
-                      <select
-                        value={mapping.position_id || mapping.positions?.id}
-                        onChange={(e) => updateMapping(index, 'position_id', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-                      >
-                        {positions.map(pos => (
-                          <option key={pos.id} value={pos.id}>
-                            {pos.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Notes
-                      </label>
-                      <input
-                        type="text"
-                        value={mapping.notes || ''}
-                        onChange={(e) => updateMapping(index, 'notes', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-                        placeholder="Optional notes"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => removeMapping(index)}
-                      className="flex-shrink-0 mt-6 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Remove"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 pt-4 border-t">
-            <button
-              onClick={saveMappings}
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-5 h-5" />
-              {saving ? 'Saving...' : 'Save Mappings'}
-            </button>
-            <button
-              onClick={() => loadMappingsForStation(selectedStation)}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Reset
-            </button>
-          </div>
-        </div>
+        <Button onClick={loadData} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
 
-      <div className="bg-blue-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-2">
-          How it works
-        </h3>
-        <ul className="space-y-2 text-blue-800">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-6 md:col-span-1">
+          <h2 className="text-xl font-bold mb-4">Stations</h2>
+
+          <div className="space-y-2 mb-4">
+            {stations.map(station => (
+              <button
+                key={station.id}
+                onClick={() => setSelectedStation(station.id)}
+                className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  selectedStation === station.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold">{station.station_name}</p>
+                    <p className="text-sm opacity-75">{station.station_code}</p>
+                  </div>
+                  {selectedStation === station.id && <MapPin className="h-5 w-5" />}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="font-bold mb-2">Add New Station</h3>
+            <div className="space-y-2">
+              <Input
+                value={newStationName}
+                onChange={(e) => setNewStationName(e.target.value)}
+                placeholder="Station name"
+              />
+              <Input
+                value={newStationCode}
+                onChange={(e) => setNewStationCode(e.target.value)}
+                placeholder="Code (e.g., FC, DTW)"
+              />
+              <Button onClick={handleAddStation} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Station
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 md:col-span-2">
+          {currentStation ? (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold">{currentStation.station_name}</h2>
+                  <p className="text-sm text-gray-600">Code: {currentStation.station_code}</p>
+                </div>
+                <Button onClick={addMapping}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Position
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {mappings.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No positions mapped to this station</p>
+                    <p className="text-sm">Click "Add Position" to get started</p>
+                  </div>
+                ) : (
+                  mappings.map(mapping => {
+                    const position = positions.find(p => p.name === mapping.position);
+                    return (
+                      <div
+                        key={mapping.id}
+                        className="flex items-center gap-3 p-4 border rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <Label>Position</Label>
+                          <select
+                            value={mapping.position}
+                            onChange={(e) => updateMapping(mapping.id, 'position', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md"
+                          >
+                            {positions.map(pos => (
+                              <option key={pos.id} value={pos.name}>
+                                {pos.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <Label>Primary</Label>
+                          <div className="mt-2">
+                            <input
+                              type="checkbox"
+                              checked={mapping.is_primary}
+                              onChange={(e) => updateMapping(mapping.id, 'is_primary', e.target.checked)}
+                              className="w-5 h-5"
+                            />
+                          </div>
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeMapping(mapping.id)}
+                          className="mt-6"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <MapPin className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <p>Select a station to view and manage position mappings</p>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card className="p-6 bg-blue-50">
+        <h3 className="text-lg font-bold text-blue-900 mb-2">How It Works</h3>
+        <ul className="space-y-2 text-blue-800 text-sm">
           <li className="flex items-start gap-2">
             <span className="flex-shrink-0 mt-1">•</span>
-            <span>Priority 1 positions will be assigned first when auto-assigning</span>
+            <span>Each station can have multiple positions mapped to it</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="flex-shrink-0 mt-1">•</span>
-            <span>Staff trained in a station can be auto-assigned to any mapped position</span>
+            <span>Mark one position as "Primary" for the default assignment</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="flex-shrink-0 mt-1">•</span>
-            <span>The system will check staff rankings and sign-offs when assigning</span>
+            <span>Staff trained for a station can be assigned to any mapped position</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="flex-shrink-0 mt-1">•</span>
-            <span>You can map one station to multiple positions with different priorities</span>
+            <span>Used by the auto-assignment system to intelligently place staff</span>
           </li>
         </ul>
-      </div>
+      </Card>
     </div>
   );
 }
