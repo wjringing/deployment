@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, Users, Calendar } from 'lucide-react';
 import { extractTextFromPDF } from '../utils/pdfProcessor';
 import { parseShiftSchedule, classifyShift } from '../utils/scheduleParser';
+import { parseShiftScheduleEnhanced, detectScheduleType } from '../utils/scheduleParserEnhanced';
 import { supabase } from '../lib/supabase';
 import { autoAssignScheduleToDeployments, matchScheduleEmployeesToStaff } from '../utils/autoDeploymentAssignment';
 import ShiftScheduleViewer from './ShiftScheduleViewer';
+import DeleteImportedShifts from './DeleteImportedShifts';
 
 export default function ScheduleUploader() {
   const [schedule, setSchedule] = useState(null);
@@ -29,12 +31,18 @@ export default function ScheduleUploader() {
     try {
       const pdfText = await extractTextFromPDF(file);
 
-      setUploadStatus('Parsing schedule data...');
-      const parsedSchedule = parseShiftSchedule(pdfText);
+      setUploadStatus('Detecting schedule type...');
+      const scheduleTypeInfo = detectScheduleType(pdfText);
+
+      setUploadStatus(`Parsing ${scheduleTypeInfo.type} schedule data...`);
+      const parsedSchedule = parseShiftScheduleEnhanced(pdfText);
 
       if (!parsedSchedule.employees || parsedSchedule.employees.length === 0) {
         throw new Error('No schedule data found in PDF');
       }
+
+      parsedSchedule.detectedType = scheduleTypeInfo.type;
+      parsedSchedule.detectionConfidence = scheduleTypeInfo.confidence;
 
       setUploadStatus('Saving to database...');
       await saveScheduleToDatabase(parsedSchedule);
@@ -172,7 +180,9 @@ export default function ScheduleUploader() {
             <div className="flex items-start gap-2">
               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-green-800 font-medium">Schedule Uploaded Successfully</p>
+                <p className="text-green-800 font-medium">
+                  {schedule.detectedType === 'Day' ? 'Daily' : 'Weekly'} Schedule Uploaded Successfully
+                </p>
                 <div className="mt-2 text-sm text-green-700">
                   <p>Matched {autoAssignResults.matches.length} employees to staff records</p>
                   <p>Auto-assigned {autoAssignResults.assignments.success.length} shifts to deployments</p>
@@ -193,9 +203,16 @@ export default function ScheduleUploader() {
     );
   }
 
+  const handleDeleteComplete = () => {
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+        <div className="mb-6">
+          <DeleteImportedShifts onDeleteComplete={handleDeleteComplete} />
+        </div>
         <div className="text-center mb-6">
           <FileText className="w-16 h-16 mx-auto text-red-600 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">
