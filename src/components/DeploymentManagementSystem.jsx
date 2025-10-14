@@ -14,8 +14,9 @@ import ScheduleUploader from './ScheduleUploader';
 import Training from '../pages/Training';
 import ProtectedPageWrapper from './ProtectedPageWrapper';
 import PasswordProtectedDataProtection from './PasswordProtectedDataProtection';
+import StationPositionMappingPage from './StationPositionMappingPage';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
   const handleLogout = async () => {
@@ -769,6 +770,7 @@ const DeploymentManagementSystem = () => {
                   { id: 'dragdrop', label: 'Drag & Drop', icon: DragDropIcon },
                   { id: 'schedule', label: 'Upload Schedule', icon: Upload },
                   { id: 'training', label: 'Training & Ranking', icon: Award },
+                  { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
                   { id: 'sales', label: 'Sales Data', icon: TrendingUp },
                   { id: 'settings', label: 'Settings', icon: Settings, locked: pageProtectionStatus.settingsLocked },
                   { id: 'targets', label: 'Targets', icon: Target },
@@ -893,6 +895,10 @@ const DeploymentManagementSystem = () => {
 
         {currentPage === 'training' && (
           <Training embedded={true} />
+        )}
+
+        {currentPage === 'station-mapping' && (
+          <StationPositionMappingPage />
         )}
 
         {currentPage === 'sales' && (

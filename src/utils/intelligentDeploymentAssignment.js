@@ -3,18 +3,335 @@ import { getTrainedStaffForStation } from './trainingManager';
 
 const POSITION_TO_STATION_MAP = {
   'Cook': 'BOH Cook',
-  'Cook2': 'BOH Cook2',
-  'DT': 'DT Order Taker',
-  'DT2': 'DT Window',
+  'Cook2': 'BOH Cook',
+  'DT': 'FOH Cashier',
+  'DT2': 'FOH Present',
   'Front': 'FOH Cashier',
-  'Mid': 'FOH Pack',
-  'Lobby': 'Lobby',
+  'Mid': 'FOH Cashier',
+  'Lobby': 'FOH Guest Host',
   'DT Pack': 'FOH Pack',
   'Rst Pack': 'FOH Pack',
   'Burgers': 'MOH Burgers',
   'Fries': 'MOH Sides',
-  'Chick': 'MOH Chicken Pack'
+  'Chick': 'MOH Chicken Pack',
+  'Rst': 'Freezer to Fryer'
 };
+
+/**
+ * Intelligent Auto-Deployment Assignment System
+ *
+ * Automatically assigns positions to deployments based on:
+ * 1. Staff default positions (highest priority)
+ * 2. Training stations with rankings
+ * 3. Sign-off status
+ * 4. Position availability
+ */
+export async function intelligentAutoDeployment(date, shiftType) {
+  try {
+    // Get configuration
+    const { data: config } = await supabase
+      .from('deployment_auto_assignment_config')
+      .select('*')
+      .eq('config_name', 'default')
+      .maybeSingle();
+
+    if (!config || !config.enabled) {
+      return {
+        error: 'Auto-assignment is disabled',
+        assigned: [],
+        skipped: [],
+        failed: []
+      };
+    }
+
+    // Get deployments without positions
+    const { data: deployments, error: deploymentsError } = await supabase
+      .from('deployments')
+      .select(`
+        *,
+        staff:staff_id (
+          id,
+          name
+        )
+      `)
+      .eq('date', date)
+      .eq('shift_type', shiftType)
+      .or('position.is.null,position.eq.');
+
+    if (deploymentsError) throw deploymentsError;
+
+    const results = {
+      assigned: [],
+      skipped: [],
+      failed: []
+    };
+
+    // Process each deployment
+    for (const deployment of deployments || []) {
+      try {
+        const position = await findBestPositionForStaff(
+          deployment.staff,
+          deployment,
+          config
+        );
+
+        if (position) {
+          const { error: updateError } = await supabase
+            .from('deployments')
+            .update({ position: position.name })
+            .eq('id', deployment.id);
+
+          if (updateError) throw updateError;
+
+          results.assigned.push({
+            staffName: deployment.staff.name,
+            position: position.name,
+            score: position.score,
+            source: position.source
+          });
+        } else {
+          results.skipped.push({
+            staffName: deployment.staff.name,
+            reason: 'No suitable position found'
+          });
+        }
+      } catch (error) {
+        console.error('Error assigning deployment:', error);
+        results.failed.push({
+          staffName: deployment.staff?.name,
+          error: error.message
+        });
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error in intelligent auto deployment:', error);
+    throw error;
+  }
+}
+
+async function findBestPositionForStaff(staff, deployment, config) {
+  const candidates = [];
+
+  // 1. Check default positions first (highest priority)
+  if (config.use_default_positions) {
+    const defaultCandidates = await getDefaultPositionCandidates(
+      staff.id,
+      deployment.shift_type,
+      deployment.date
+    );
+    candidates.push(...defaultCandidates);
+  }
+
+  // 2. If no default positions or none available, check training stations
+  if (config.use_training_stations && candidates.length === 0) {
+    const trainingCandidates = await getTrainingBasedCandidates(
+      staff.id,
+      deployment.shift_type,
+      deployment.date,
+      config
+    );
+    candidates.push(...trainingCandidates);
+  }
+
+  // 3. Sort by score and return best
+  candidates.sort((a, b) => b.score - a.score);
+
+  return candidates[0] || null;
+}
+
+async function getDefaultPositionCandidates(staffId, shiftType, date) {
+  const candidates = [];
+
+  try {
+    // Get staff default positions
+    const { data: defaultPositions } = await supabase
+      .from('staff_default_positions')
+      .select(`
+        priority,
+        shift_type,
+        positions (
+          id,
+          name
+        )
+      `)
+      .eq('staff_id', staffId);
+
+    if (!defaultPositions || defaultPositions.length === 0) {
+      return candidates;
+    }
+
+    // Check each default position
+    for (const dp of defaultPositions) {
+      // Check if shift type matches
+      if (dp.shift_type !== 'Both' && dp.shift_type !== shiftType) {
+        continue;
+      }
+
+      // Check if position is available
+      const available = await isPositionAvailable(
+        dp.positions.name,
+        date,
+        shiftType
+      );
+
+      if (available) {
+        candidates.push({
+          name: dp.positions.name,
+          score: 1000 + (10 - dp.priority), // Base 1000 + priority bonus
+          source: 'default',
+          priority: dp.priority
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error getting default position candidates:', error);
+  }
+
+  return candidates;
+}
+
+async function getTrainingBasedCandidates(staffId, shiftType, date, config) {
+  const candidates = [];
+
+  try {
+    // Get staff training stations
+    const { data: trainings } = await supabase
+      .from('staff_training_stations')
+      .select('station_name')
+      .eq('staff_id', staffId);
+
+    if (!trainings || trainings.length === 0) {
+      return candidates;
+    }
+
+    // Get rankings for scoring
+    const { data: rankings } = await supabase
+      .from('staff_rankings')
+      .select('station_name, rating')
+      .eq('staff_id', staffId);
+
+    const rankingsMap = {};
+    rankings?.forEach(r => {
+      rankingsMap[r.station_name] = r.rating;
+    });
+
+    // Get sign-offs for bonus
+    const { data: signOffs } = await supabase
+      .from('staff_sign_offs')
+      .select('station_name')
+      .eq('staff_id', staffId);
+
+    const signOffSet = new Set(signOffs?.map(s => s.station_name) || []);
+
+    // For each training station, get position mappings
+    for (const training of trainings) {
+      const { data: mappings } = await supabase
+        .from('station_position_mappings')
+        .select(`
+          priority,
+          positions (
+            id,
+            name
+          )
+        `)
+        .eq('station_name', training.station_name)
+        .order('priority');
+
+      if (!mappings || mappings.length === 0) continue;
+
+      for (const mapping of mappings) {
+        const available = await isPositionAvailable(
+          mapping.positions.name,
+          date,
+          shiftType
+        );
+
+        if (!available) continue;
+
+        // Calculate score
+        let score = 100; // Base score
+
+        // Add ranking bonus (10-50 points)
+        const rating = rankingsMap[training.station_name];
+        if (rating && config.use_rankings) {
+          score += rating * 10;
+
+          // Check minimum threshold
+          if (rating < config.min_ranking_threshold) {
+            continue; // Skip if below threshold
+          }
+        }
+
+        // Add sign-off bonus (20 points)
+        if (signOffSet.has(training.station_name)) {
+          score += 20;
+        } else if (config.prefer_signed_off_only) {
+          continue; // Skip if not signed off and config requires it
+        }
+
+        // Priority penalty (prefer priority 1)
+        score -= mapping.priority * 5;
+
+        candidates.push({
+          name: mapping.positions.name,
+          score,
+          source: 'training',
+          station: training.station_name,
+          rating: rating || 0,
+          signedOff: signOffSet.has(training.station_name)
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error getting training-based candidates:', error);
+  }
+
+  return candidates;
+}
+
+async function isPositionAvailable(positionName, date, shiftType) {
+  try {
+    // Check if position already has someone assigned
+    const { data: existing } = await supabase
+      .from('deployments')
+      .select('id')
+      .eq('date', date)
+      .eq('shift_type', shiftType)
+      .eq('position', positionName);
+
+    if (!existing || existing.length === 0) {
+      return true; // Position is available
+    }
+
+    // Check position capacity
+    const { data: positions } = await supabase
+      .from('positions')
+      .select('id')
+      .eq('name', positionName)
+      .maybeSingle();
+
+    if (!positions) return false;
+
+    const { data: capacity } = await supabase
+      .from('position_capacity')
+      .select('max_concurrent')
+      .eq('position_id', positions.id)
+      .or(`shift_type.eq.${shiftType},shift_type.eq.Both`)
+      .maybeSingle();
+
+    if (!capacity) {
+      // No capacity defined, assume single person
+      return existing.length === 0;
+    }
+
+    return existing.length < capacity.max_concurrent;
+  } catch (error) {
+    console.error('Error checking position availability:', error);
+    return false;
+  }
+}
 
 export async function suggestOptimalPositionForStaff(staffId, role, shiftType) {
   try {
@@ -134,4 +451,51 @@ export async function validateDeploymentQualifications(staffId, position, requir
       reason: 'Error validating qualifications'
     };
   }
+}
+
+/**
+ * Get configuration for intelligent assignment
+ */
+export async function getAssignmentConfig() {
+  const { data, error } = await supabase
+    .from('deployment_auto_assignment_config')
+    .select('*')
+    .eq('config_name', 'default')
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error getting assignment config:', error);
+    return {
+      enabled: true,
+      use_training_stations: true,
+      use_rankings: true,
+      use_default_positions: true,
+      min_ranking_threshold: 3.0,
+      prefer_signed_off_only: false
+    };
+  }
+
+  return data || {
+    enabled: true,
+    use_training_stations: true,
+    use_rankings: true,
+    use_default_positions: true,
+    min_ranking_threshold: 3.0,
+    prefer_signed_off_only: false
+  };
+}
+
+/**
+ * Update assignment configuration
+ */
+export async function updateAssignmentConfig(updates) {
+  const { data, error } = await supabase
+    .from('deployment_auto_assignment_config')
+    .update(updates)
+    .eq('config_name', 'default')
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
 }
