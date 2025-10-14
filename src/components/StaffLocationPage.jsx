@@ -31,14 +31,14 @@ export default function StaffLocationPage() {
           .from('staff_current_locations')
           .select(`
             *,
-            staff:staff(id, name, is_under_18),
-            deployment:deployments(id, position, start_time, end_time)
+            staff:staff_id(id, name, is_under_18),
+            deployment:deployment_id(id, position, start_time, end_time)
           `),
         supabase
           .from('deployments')
           .select(`
             *,
-            staff:staff(id, name, is_under_18)
+            staff:staff_id(id, name, is_under_18)
           `)
           .eq('date', selectedDate)
           .eq('shift_type', selectedShift),

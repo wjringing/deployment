@@ -24,7 +24,7 @@ import LaborSalesCalculatorPage from './LaborSalesCalculatorPage';
 import PerformanceScorecardPage from './PerformanceScorecardPage';
 import AutoAssignmentRulesPage from './AutoAssignmentRulesPage';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
   const handleLogout = async () => {
@@ -75,7 +75,9 @@ const DeploymentManagementSystem = () => {
   });
   const [showPrivacyCenter, setShowPrivacyCenter] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
+
   const [newTemplateShift, setNewTemplateShift] = useState({
     name: '',
     startTime: '',
@@ -752,76 +754,125 @@ const DeploymentManagementSystem = () => {
     );
   }
 
+  const navigationGroups = {
+    operations: {
+      label: 'Operations',
+      icon: Users,
+      items: [
+        { id: 'deployment', label: 'Deployments', icon: Users },
+        { id: 'dragdrop', label: 'Drag & Drop', icon: DragDropIcon },
+        { id: 'schedule', label: 'Upload Schedule', icon: Upload }
+      ]
+    },
+    shift: {
+      label: 'Shift Management',
+      icon: Clock,
+      items: [
+        { id: 'checklists', label: 'Checklists', icon: CheckSquare },
+        { id: 'handover', label: 'Handover Notes', icon: MessageSquare },
+        { id: 'location', label: 'Location Board', icon: Navigation },
+        { id: 'breaks', label: 'Break Scheduler', icon: Coffee }
+      ]
+    },
+    analytics: {
+      label: 'Analytics',
+      icon: BarChart3,
+      items: [
+        { id: 'labor-calc', label: 'Labor Calculator', icon: Calculator },
+        { id: 'performance', label: 'Performance', icon: BarChart3 },
+        { id: 'sales', label: 'Sales Data', icon: TrendingUp }
+      ]
+    },
+    training: {
+      label: 'Training & Rules',
+      icon: Award,
+      items: [
+        { id: 'training', label: 'Training & Ranking', icon: Award },
+        { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
+        { id: 'rule-management', label: 'Rule Management', icon: Shield },
+        { id: 'auto-rules', label: 'Auto-Assignment', icon: Settings }
+      ]
+    },
+    admin: {
+      label: 'Admin',
+      icon: Settings,
+      items: [
+        { id: 'settings', label: 'Settings', icon: Settings },
+        { id: 'targets', label: 'Targets', icon: Target },
+        { id: 'protection', label: 'Data Protection', icon: Shield }
+      ]
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white shadow-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                <DragDropIcon className="w-8 h-8 text-red-600" />
-                KFC Deployment Management
+          <div className="flex justify-between items-center py-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <DragDropIcon className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
+                <span className="hidden sm:inline">KFC Deployment</span>
               </h1>
               {isDragging && (
-                <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-                  Drag Mode Active
+                <div className="hidden md:block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                  Drag Mode
                 </div>
               )}
             </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Navigation */}
-              <nav className="flex space-x-1">
-                {[
-                  { id: 'deployment', label: 'Deployments', icon: Users },
-                  { id: 'dragdrop', label: 'Drag & Drop', icon: DragDropIcon },
-                  { id: 'schedule', label: 'Upload Schedule', icon: Upload },
-                  { id: 'checklists', label: 'Checklists', icon: CheckSquare },
-                  { id: 'handover', label: 'Handover Notes', icon: MessageSquare },
-                  { id: 'location', label: 'Location Board', icon: Navigation },
-                  { id: 'breaks', label: 'Break Scheduler', icon: Coffee },
-                  { id: 'labor-calc', label: 'Labor Calculator', icon: Calculator },
-                  { id: 'performance', label: 'Performance', icon: BarChart3 },
-                  { id: 'training', label: 'Training & Ranking', icon: Award },
-                  { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
-                  { id: 'rule-management', label: 'Rule Management', icon: Shield },
-                  { id: 'auto-rules', label: 'Auto-Assignment Rules', icon: Settings },
-                  { id: 'sales', label: 'Sales Data', icon: TrendingUp },
-                  { id: 'settings', label: 'Settings', icon: Settings, locked: pageProtectionStatus.settingsLocked },
-                  { id: 'targets', label: 'Targets', icon: Target },
-                  { id: 'protection', label: 'Data Protection', icon: Shield },
-                  { id: 'privacy', label: 'Privacy Center', icon: UserX }
-                ].map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setCurrentPage(id)}
-                    className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors relative ${
-                      currentPage === id
-                        ? 'bg-red-100 text-red-700 font-medium'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                    {id.locked && (
-                      <Lock className="w-3 h-3 text-red-500 absolute -top-1 -right-1" />
+
+            <div className="flex items-center gap-2">
+              {/* Desktop Navigation */}
+              <nav className="hidden lg:flex items-center gap-1">
+                {Object.entries(navigationGroups).map(([key, group]) => (
+                  <div key={key} className="relative">
+                    <button
+                      onClick={() => setOpenDropdown(openDropdown === key ? null : key)}
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                        group.items.some(item => item.id === currentPage)
+                          ? 'bg-red-100 text-red-700 font-medium'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                    >
+                      <group.icon className="w-4 h-4" />
+                      <span className="text-sm">{group.label}</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                    {openDropdown === key && (
+                      <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border min-w-[200px] py-1 z-50">
+                        {group.items.map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setCurrentPage(item.id);
+                              setOpenDropdown(null);
+                            }}
+                            className={`w-full px-4 py-2 text-left flex items-center gap-2 transition-colors ${
+                              currentPage === item.id
+                                ? 'bg-red-50 text-red-700'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <item.icon className="w-4 h-4" />
+                            <span className="text-sm">{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 ))}
               </nav>
-              
-              <button
-                onClick={() => setShowPrivacyCenter(true)}
-                className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 mr-2"
-                title="Privacy Center"
-              >
-                <UserX className="w-5 h-5" />
-              </button>
-              
+
               <button
                 onClick={handleLogout}
-                className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100"
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />
@@ -830,6 +881,47 @@ const DeploymentManagementSystem = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="font-bold text-lg">Menu</h2>
+              <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2">
+              {Object.entries(navigationGroups).map(([key, group]) => (
+                <div key={key} className="mb-4">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
+                    <group.icon className="w-4 h-4" />
+                    {group.label}
+                  </div>
+                  {group.items.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setCurrentPage(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors rounded-lg ${
+                        currentPage === item.id
+                          ? 'bg-red-100 text-red-700 font-medium'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {uiError && (

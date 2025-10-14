@@ -113,9 +113,21 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
 
           const updateData = { position: position.name };
 
-          if (shiftType === 'Night Shift' && position.requiresClosing) {
-            updateData.is_closing_duty = true;
-            updateData.closing_validated = position.closingValidated || false;
+          const secondaryPosition = await findSecondaryPosition(deployment.staff.id, position.name, date, shiftType);
+          if (secondaryPosition) {
+            updateData.secondary_position = secondaryPosition;
+          }
+
+          if (shiftType === 'Night Shift' || shiftType === 'closing') {
+            const closingPosition = await findClosingPosition(deployment.staff.id, date, shiftType);
+            if (closingPosition) {
+              updateData.closing_position = closingPosition;
+            }
+
+            if (position.requiresClosing) {
+              updateData.is_closing_duty = true;
+              updateData.closing_validated = position.closingValidated || false;
+            }
           }
 
           const { error: updateError } = await supabase
@@ -128,6 +140,8 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           results.assigned.push({
             staffName: deployment.staff.name,
             position: position.name,
+            secondaryPosition: updateData.secondary_position || null,
+            closingPosition: updateData.closing_position || null,
             score: position.score,
             source: position.source,
             closingDuty: updateData.is_closing_duty || false,
@@ -568,4 +582,73 @@ export async function updateAssignmentConfig(updates) {
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Find secondary position for staff based on their secondary position assignments
+ */
+async function findSecondaryPosition(staffId, primaryPosition, date, shiftType) {
+  try {
+    const { data: secondaryPositions } = await supabase
+      .from('staff_secondary_positions')
+      .select('secondary_position, priority')
+      .eq('staff_id', staffId)
+      .eq('is_active', true)
+      .order('priority');
+
+    if (!secondaryPositions || secondaryPositions.length === 0) {
+      return null;
+    }
+
+    for (const sp of secondaryPositions) {
+      if (sp.secondary_position === primaryPosition) continue;
+
+      const available = await isPositionAvailable(sp.secondary_position, date, shiftType);
+      if (available) {
+        return sp.secondary_position;
+      }
+    }
+
+    return secondaryPositions[0]?.secondary_position || null;
+  } catch (error) {
+    console.error('Error finding secondary position:', error);
+    return null;
+  }
+}
+
+/**
+ * Find closing position for staff based on their closing station training
+ */
+async function findClosingPosition(staffId, date, shiftType) {
+  try {
+    const { data: closingStations } = await supabase
+      .from('staff_closing_stations')
+      .select('closing_station')
+      .eq('staff_id', staffId)
+      .eq('is_qualified', true);
+
+    if (!closingStations || closingStations.length === 0) {
+      return null;
+    }
+
+    const closingStation = closingStations[0].closing_station;
+
+    const { data: mappings } = await supabase
+      .from('station_position_mappings')
+      .select('position')
+      .eq('station_id', (
+        await supabase
+          .from('stations')
+          .select('id')
+          .eq('station_name', closingStation)
+          .maybeSingle()
+      ).data?.id)
+      .eq('is_primary', true)
+      .maybeSingle();
+
+    return mappings?.position || null;
+  } catch (error) {
+    console.error('Error finding closing position:', error);
+    return null;
+  }
 }
