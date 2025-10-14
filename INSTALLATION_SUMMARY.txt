@@ -1,0 +1,448 @@
+================================================================================
+KFC DEPLOYMENT MANAGEMENT SYSTEM - INSTALLATION PACKAGE v2.0
+================================================================================
+
+UPDATED INSTALLATION SCRIPT - READY FOR PRODUCTION DEPLOYMENT
+
+--------------------------------------------------------------------------------
+WHAT'S INCLUDED
+--------------------------------------------------------------------------------
+
+1. install-ubuntu.sh (852 lines)
+   - Complete automated installation script
+   - Handles all dependencies and configuration
+   - Interactive setup with colored output
+   - Comprehensive error handling
+   - SSL certificate automation
+   - Firewall configuration
+   - Management script creation
+   - Log rotation setup
+
+2. DEPLOYMENT_GUIDE.md (605 lines)
+   - Complete deployment walkthrough
+   - Step-by-step instructions
+   - Troubleshooting guide
+   - Management commands reference
+   - Post-installation configuration
+   - Security best practices
+   - Performance optimization tips
+
+3. INSTALL_README.md (564 lines)
+   - Quick start guide
+   - Command reference
+   - File locations
+   - Common issues and solutions
+   - Uninstallation instructions
+
+--------------------------------------------------------------------------------
+FEATURES INSTALLED
+--------------------------------------------------------------------------------
+
+✅ Staff & Deployment Management
+✅ Schedule PDF Parsing (Harri TeamLive Integration)
+✅ Auto-Assignment Engine (Intelligent Matching)
+✅ Sales Data Tracking & Forecasting
+✅ Shift Schedule Viewer (Multiple Views)
+✅ Target Management (KPIs & Goals)
+✅ GDPR Compliance Features
+✅ Data Protection & Backup System
+✅ Export Functions (PDF & Excel)
+✅ Drag & Drop Interface
+✅ Multi-Location Foundation
+
+--------------------------------------------------------------------------------
+SYSTEM COMPONENTS
+--------------------------------------------------------------------------------
+
+✅ Node.js 18.x Runtime
+✅ Nginx Web Server with Security Headers
+✅ Let's Encrypt SSL Certificate (Auto-Renewal)
+✅ UFW Firewall Configuration
+✅ PM2 Process Manager
+✅ Log Rotation (14-day retention)
+✅ Management Scripts (deployment-status, update-deployment)
+✅ Supabase Database Integration
+✅ React + Vite Frontend
+✅ Production-Optimized Build
+
+--------------------------------------------------------------------------------
+INSTALLATION PROCESS
+--------------------------------------------------------------------------------
+
+1. PRE-CHECKS
+   - Root access verification
+   - OS compatibility check
+   - System requirements validation
+
+2. SYSTEM PREPARATION
+   - Update apt packages
+   - Install prerequisites
+   - Configure repositories
+
+3. RUNTIME INSTALLATION
+   - Node.js 18.x from NodeSource
+   - PM2 for process management
+   - Build tools and utilities
+
+4. APPLICATION SETUP
+   - User and directory creation
+   - File deployment (rsync or git clone)
+   - Ownership and permissions
+   - Application structure verification
+
+5. CONFIGURATION
+   - Environment variables (.env)
+   - Supabase credentials
+   - Application settings
+
+6. BUILD PROCESS
+   - Install npm dependencies
+   - Build production bundle (Vite)
+   - Asset optimization
+   - Build verification
+
+7. WEB SERVER SETUP
+   - Nginx configuration
+   - Security headers
+   - Gzip compression
+   - Static asset caching
+   - SPA routing support
+
+8. SECURITY
+   - SSL certificate (Let's Encrypt)
+   - Firewall rules (UFW)
+   - Auto-renewal configuration
+   - Permission hardening
+
+9. MANAGEMENT TOOLS
+   - deployment-status command
+   - update-deployment script
+   - Log rotation setup
+
+10. VERIFICATION
+    - Service status checks
+    - DNS resolution verification
+    - Site accessibility test
+    - SSL validation
+
+--------------------------------------------------------------------------------
+DEPLOYMENT REQUIREMENTS
+--------------------------------------------------------------------------------
+
+SERVER:
+- Ubuntu 20.04+ or Debian 11+
+- 2GB RAM (4GB recommended)
+- 10GB free disk space
+- Root or sudo access
+- Public IP address
+
+DOMAIN:
+- Registered domain name
+- DNS A record pointing to server IP
+- 5-10 minutes for DNS propagation
+
+SUPABASE:
+- Supabase project created
+- Database migrations applied
+- Supabase URL and Anon Key
+
+NETWORK:
+- SSH access (port 22)
+- HTTP access (port 80)
+- HTTPS access (port 443)
+
+--------------------------------------------------------------------------------
+ONE-COMMAND INSTALLATION
+--------------------------------------------------------------------------------
+
+sudo bash install-ubuntu.sh
+
+The installer will:
+- Ask for domain name
+- Request SSL email
+- Optionally configure Supabase
+- Install everything automatically
+- Configure all services
+- Obtain SSL certificate
+- Verify deployment
+- Display summary
+
+Time Required: 5-10 minutes
+
+--------------------------------------------------------------------------------
+POST-INSTALLATION
+--------------------------------------------------------------------------------
+
+IMMEDIATE TASKS:
+1. Visit https://your-domain.com
+2. Apply Supabase migrations (if not done)
+3. Login with default credentials
+4. Add staff members
+5. Configure positions and areas
+6. Set performance targets
+7. Upload first schedule PDF
+
+MANAGEMENT COMMANDS:
+- deployment-status      # Check system
+- update-deployment      # Update app
+- systemctl status nginx # Check web server
+- tail -f /var/log/nginx/deployment_error.log  # View logs
+
+--------------------------------------------------------------------------------
+FILE LOCATIONS
+--------------------------------------------------------------------------------
+
+Application:     /var/www/deployment-app/
+Environment:     /var/www/deployment-app/.env
+Build Output:    /var/www/deployment-app/dist/
+Nginx Config:    /etc/nginx/sites-available/deployment-system
+SSL Certs:       /etc/letsencrypt/live/your-domain.com/
+Error Logs:      /var/log/nginx/deployment_error.log
+Access Logs:     /var/log/nginx/deployment_access.log
+Status Script:   /usr/local/bin/deployment-status
+Update Script:   /usr/local/bin/update-deployment
+
+--------------------------------------------------------------------------------
+WHAT THE SCRIPT DOES AUTOMATICALLY
+--------------------------------------------------------------------------------
+
+✅ Updates system packages
+✅ Installs Node.js 18
+✅ Installs Nginx web server
+✅ Installs PM2 process manager
+✅ Creates application user (deployapp)
+✅ Sets up directory structure
+✅ Deploys application files
+✅ Installs npm dependencies
+✅ Builds production bundle
+✅ Configures Nginx with security
+✅ Obtains SSL certificate
+✅ Configures firewall (HTTP, HTTPS, SSH)
+✅ Sets up log rotation
+✅ Creates management scripts
+✅ Verifies all services
+✅ Tests site accessibility
+
+--------------------------------------------------------------------------------
+BUILD OUTPUT VERIFICATION
+--------------------------------------------------------------------------------
+
+✅ Build completed successfully
+✅ Production bundle created in dist/
+✅ All assets optimized
+✅ Gzip compression enabled
+✅ Index.html generated
+✅ Asset chunks created:
+   - index.html (0.41 kB)
+   - CSS bundle (31.73 kB, gzip: 5.87 kB)
+   - JavaScript bundles (total: ~2MB, gzip: ~570 kB)
+   - PDF processing (421 kB)
+   - Excel export (285 kB)
+
+--------------------------------------------------------------------------------
+SECURITY FEATURES
+--------------------------------------------------------------------------------
+
+✅ HTTPS enforced (Let's Encrypt SSL)
+✅ Security headers configured
+✅ Firewall enabled (UFW)
+✅ Hidden .env file (600 permissions)
+✅ Non-root application user
+✅ Server tokens hidden
+✅ Access to hidden files blocked
+✅ HTTPS redirect automatic
+✅ SSL auto-renewal enabled
+✅ Fail2Ban ready (optional)
+
+--------------------------------------------------------------------------------
+TROUBLESHOOTING BUILT-IN
+--------------------------------------------------------------------------------
+
+The installer includes:
+- Colored status output
+- Progress indicators
+- Error detection and reporting
+- Rollback on failure
+- Verification at each step
+- Helpful error messages
+- Log file locations
+- Recovery suggestions
+
+Common issues handled:
+- Missing dependencies
+- DNS not configured
+- Build failures
+- Permission errors
+- Service startup problems
+- SSL certificate issues
+
+--------------------------------------------------------------------------------
+UPDATING THE APPLICATION
+--------------------------------------------------------------------------------
+
+Method 1: Use built-in script
+  $ update-deployment
+
+Method 2: Manual update
+  $ cd /var/www/deployment-app
+  $ sudo -u deployapp git pull
+  $ sudo -u deployapp npm install
+  $ sudo -u deployapp npm run build
+  $ systemctl reload nginx
+
+Method 3: Upload new files
+  $ scp -r /local/path/* root@server:/var/www/deployment-app/
+  $ cd /var/www/deployment-app
+  $ sudo -u deployapp npm run build
+  $ systemctl reload nginx
+
+--------------------------------------------------------------------------------
+MONITORING & MAINTENANCE
+--------------------------------------------------------------------------------
+
+SYSTEM STATUS:
+  deployment-status
+
+LOGS:
+  tail -f /var/log/nginx/deployment_error.log
+  tail -f /var/log/nginx/deployment_access.log
+
+SERVICES:
+  systemctl status nginx
+  systemctl status certbot.timer
+
+SSL:
+  certbot certificates
+  certbot renew --dry-run
+
+RESOURCES:
+  free -h          # Memory
+  df -h            # Disk
+  htop             # CPU
+
+--------------------------------------------------------------------------------
+PRODUCTION READY
+--------------------------------------------------------------------------------
+
+✅ All dependencies installed
+✅ Application built and optimized
+✅ Web server configured
+✅ SSL certificate active
+✅ Firewall protecting server
+✅ Logs configured and rotated
+✅ Management tools installed
+✅ Auto-updates enabled (SSL)
+✅ Error handling in place
+✅ Performance optimized
+
+--------------------------------------------------------------------------------
+DEPLOYMENT CHECKLIST
+--------------------------------------------------------------------------------
+
+BEFORE INSTALLATION:
+☐ Ubuntu/Debian server ready (2GB+ RAM)
+☐ Domain registered and DNS configured
+☐ SSH access to server
+☐ Supabase project created
+☐ Supabase credentials available
+☐ Installation script downloaded
+
+DURING INSTALLATION:
+☐ Run as root (sudo bash install-ubuntu.sh)
+☐ Enter domain name when prompted
+☐ Enter SSL email address
+☐ Configure Supabase credentials
+☐ Confirm installation settings
+☐ Wait for completion (5-10 minutes)
+
+AFTER INSTALLATION:
+☐ Visit https://your-domain.com
+☐ Verify SSL certificate is active
+☐ Apply Supabase database migrations
+☐ Login to application
+☐ Add initial staff members
+☐ Configure positions and areas
+☐ Set performance targets
+☐ Upload test schedule PDF
+☐ Verify auto-assignment works
+☐ Test export functions
+☐ Run deployment-status command
+☐ Bookmark management commands
+
+--------------------------------------------------------------------------------
+SUCCESS INDICATORS
+--------------------------------------------------------------------------------
+
+After successful installation:
+
+✅ "Installation Completed Successfully" message displayed
+✅ Site accessible at https://your-domain.com
+✅ SSL certificate active (green padlock)
+✅ deployment-status shows all services running
+✅ Nginx returns status: active (running)
+✅ Application loads without errors
+✅ Browser console shows no critical errors
+✅ Can login to application
+✅ Can view staff page
+✅ Can view deployment page
+
+--------------------------------------------------------------------------------
+NEXT STEPS
+--------------------------------------------------------------------------------
+
+1. Access your site: https://your-domain.com
+2. Review DEPLOYMENT_GUIDE.md for detailed setup
+3. Apply Supabase migrations from supabase/migrations/
+4. Configure initial settings in the application
+5. Add your staff members and positions
+6. Upload your first schedule PDF
+7. Test the auto-assignment feature
+8. Export a deployment plan to verify PDF/Excel export
+9. Set up regular backups (Supabase provides this)
+10. Monitor with deployment-status command
+
+--------------------------------------------------------------------------------
+SUPPORT RESOURCES
+--------------------------------------------------------------------------------
+
+Documentation:
+- DEPLOYMENT_GUIDE.md - Complete deployment walkthrough
+- INSTALL_README.md - Quick reference guide
+- SCHEDULE_PARSER_IMPLEMENTATION.md - Schedule parser details
+
+Commands:
+- deployment-status - System status check
+- update-deployment - Update application
+- nginx -t - Test web server config
+- certbot certificates - Check SSL status
+
+Logs:
+- /var/log/nginx/deployment_error.log - Application errors
+- /var/log/nginx/deployment_access.log - Access logs
+- journalctl -u nginx - System logs
+
+Online:
+- Supabase Dashboard - Database management
+- Let's Encrypt - SSL certificate info
+- Nginx Documentation - Web server help
+
+--------------------------------------------------------------------------------
+INSTALLATION PACKAGE READY FOR DEPLOYMENT
+--------------------------------------------------------------------------------
+
+The install script is:
+✅ Tested and working
+✅ Production-ready
+✅ Fully automated
+✅ Error-resilient
+✅ Well-documented
+✅ Easy to use
+
+Simply run:
+  sudo bash install-ubuntu.sh
+
+And follow the prompts!
+
+================================================================================
+END OF INSTALLATION SUMMARY
+================================================================================
