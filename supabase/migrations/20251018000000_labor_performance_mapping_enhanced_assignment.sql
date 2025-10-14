@@ -206,14 +206,30 @@ CREATE TABLE IF NOT EXISTS auto_assignment_rules (
 
 CREATE TABLE IF NOT EXISTS assignment_history (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  deployment_id uuid REFERENCES deployments(id) ON DELETE CASCADE,
-  staff_id uuid REFERENCES staff(id) ON DELETE CASCADE,
+  deployment_id uuid,
+  staff_id uuid,
   assigned_position text NOT NULL,
   assignment_method text NOT NULL DEFAULT 'manual',
   rule_applied text DEFAULT '',
   assignment_score numeric(5,2) DEFAULT 0,
   created_at timestamptz DEFAULT now()
 );
+
+-- Add foreign key constraints if tables exist
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'deployments') THEN
+    ALTER TABLE assignment_history
+    ADD CONSTRAINT assignment_history_deployment_id_fkey
+    FOREIGN KEY (deployment_id) REFERENCES deployments(id) ON DELETE CASCADE;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'staff') THEN
+    ALTER TABLE assignment_history
+    ADD CONSTRAINT assignment_history_staff_id_fkey
+    FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- Enable Row Level Security
 
