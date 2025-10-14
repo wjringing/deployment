@@ -1,7 +1,8 @@
 import React from 'react';
 import DeploymentCard from './DeploymentCard';
 import { exportEnhancedExcel } from '../utils/enhancedExcelExport';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, X, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { intelligentAutoDeployment } from '../utils/intelligentDeploymentAssignment';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, X, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, RefreshCw, Zap } from 'lucide-react';
 
 const DeploymentPage = ({
   selectedDate,
@@ -46,7 +47,29 @@ const DeploymentPage = ({
   onRefreshData
 }) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
-  
+  const [showAutoAssignModal, setShowAutoAssignModal] = React.useState(false);
+  const [autoAssignResults, setAutoAssignResults] = React.useState(null);
+  const [autoAssigning, setAutoAssigning] = React.useState(false);
+
+  const handleAutoAssign = async (shiftType) => {
+    try {
+      setAutoAssigning(true);
+      const results = await intelligentAutoDeployment(selectedDate, shiftType);
+      setAutoAssignResults(results);
+      setShowAutoAssignModal(true);
+
+      // Refresh deployments to show updated positions
+      if (onRefreshData) {
+        await onRefreshData();
+      }
+    } catch (error) {
+      console.error('Error auto-assigning positions:', error);
+      alert('Error auto-assigning positions: ' + error.message);
+    } finally {
+      setAutoAssigning(false);
+    }
+  };
+
   // Generate position categories from database
   const positionCategories = React.useMemo(() => {
     if (!supabasePositions || !Array.isArray(supabasePositions)) {
@@ -390,6 +413,14 @@ const DeploymentPage = ({
               Day Shift Deployments ({dayShiftDeployments.length})
             </h2>
             <div className="flex gap-2">
+              <button
+                onClick={() => handleAutoAssign('Day Shift')}
+                disabled={autoAssigning || dayShiftDeployments.length === 0}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+              >
+                <Zap className="w-4 h-4" />
+                {autoAssigning ? 'Assigning...' : 'Auto-Assign Positions'}
+              </button>
               {/* Excel export temporarily hidden
               <button
                 onClick={() => onExportShiftExcel('Day Shift')}
@@ -436,6 +467,14 @@ const DeploymentPage = ({
               Night Shift Deployments ({nightShiftDeployments.length})
             </h2>
             <div className="flex gap-2">
+              <button
+                onClick={() => handleAutoAssign('Night Shift')}
+                disabled={autoAssigning || nightShiftDeployments.length === 0}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+              >
+                <Zap className="w-4 h-4" />
+                {autoAssigning ? 'Assigning...' : 'Auto-Assign Positions'}
+              </button>
               {/* Excel export temporarily hidden
               <button
                 onClick={() => onExportShiftExcel('Night Shift')}
@@ -447,7 +486,7 @@ const DeploymentPage = ({
               */}
               <button
                 onClick={() => onExportPDF('night')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
               >
                 <Download className="w-3 h-3" />
                 PDF Night Shift
@@ -529,6 +568,87 @@ const DeploymentPage = ({
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-Assign Results Modal */}
+      {showAutoAssignModal && autoAssignResults && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-600" />
+                Auto-Assignment Results
+              </h3>
+              <button
+                onClick={() => setShowAutoAssignModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {autoAssignResults.assigned && autoAssignResults.assigned.length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Successfully Assigned ({autoAssignResults.assigned.length})
+                  </h4>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {autoAssignResults.assigned.map((result, idx) => (
+                      <div key={idx} className="text-sm text-green-800 flex items-center justify-between">
+                        <span>{result.staffName}</span>
+                        <span className="font-medium">→ {result.position}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {autoAssignResults.skipped && autoAssignResults.skipped.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Skipped ({autoAssignResults.skipped.length})
+                  </h4>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {autoAssignResults.skipped.map((result, idx) => (
+                      <div key={idx} className="text-sm text-yellow-800">
+                        <div className="font-medium">{result.staffName}</div>
+                        <div className="text-xs">{result.reason}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {autoAssignResults.failed && autoAssignResults.failed.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-red-900 mb-2">
+                    Failed ({autoAssignResults.failed.length})
+                  </h4>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {autoAssignResults.failed.map((result, idx) => (
+                      <div key={idx} className="text-sm text-red-800">
+                        <div className="font-medium">{result.staffName}</div>
+                        <div className="text-xs">{result.error}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowAutoAssignModal(false)}
+                className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
+              >
+                Close
               </button>
             </div>
           </div>
