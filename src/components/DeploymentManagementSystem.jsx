@@ -18,8 +18,10 @@ import StationPositionMappingPage from './StationPositionMappingPage';
 import RuleManagementPage from './RuleManagementPage';
 import ChecklistsPage from './ChecklistsPage';
 import HandoverNotesPage from './HandoverNotesPage';
+import StaffLocationPage from './StaffLocationPage';
+import BreakSchedulerPage from './BreakSchedulerPage';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
   const handleLogout = async () => {
@@ -774,6 +776,8 @@ const DeploymentManagementSystem = () => {
                   { id: 'schedule', label: 'Upload Schedule', icon: Upload },
                   { id: 'checklists', label: 'Checklists', icon: CheckSquare },
                   { id: 'handover', label: 'Handover Notes', icon: MessageSquare },
+                  { id: 'location', label: 'Location Board', icon: Navigation },
+                  { id: 'breaks', label: 'Break Scheduler', icon: Coffee },
                   { id: 'training', label: 'Training & Ranking', icon: Award },
                   { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
                   { id: 'rule-management', label: 'Rule Management', icon: Shield },
@@ -905,6 +909,14 @@ const DeploymentManagementSystem = () => {
 
         {currentPage === 'handover' && (
           <HandoverNotesPage />
+        )}
+
+        {currentPage === 'location' && (
+          <StaffLocationPage />
+        )}
+
+        {currentPage === 'breaks' && (
+          <BreakSchedulerPage />
         )}
 
         {currentPage === 'training' && (
