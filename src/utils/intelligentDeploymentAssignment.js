@@ -183,7 +183,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           console.log('🔄 Looking for secondary position...');
           const secondaryPosition = await findSecondaryPosition(deployment.staff.id, position.name, date, shiftType);
           if (secondaryPosition) {
-            updateData.secondary_position = secondaryPosition;
+            updateData.secondary = secondaryPosition;
             console.log(`✅ Secondary position: ${secondaryPosition}`);
             staffDiag.secondaryPosition = secondaryPosition;
           } else {
@@ -195,7 +195,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
             console.log('🌙 Processing closing position (Night Shift)...');
             const closingPosition = await findClosingPosition(deployment.staff.id, date, shiftType);
             if (closingPosition) {
-              updateData.closing_position = closingPosition;
+              updateData.closing = closingPosition;
               console.log(`✅ Closing position: ${closingPosition}`);
               staffDiag.closingPosition = closingPosition;
             } else {
@@ -226,8 +226,8 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           results.assigned.push({
             staffName: deployment.staff.name,
             position: position.name,
-            secondaryPosition: updateData.secondary_position || null,
-            closingPosition: updateData.closing_position || null,
+            secondaryPosition: updateData.secondary || null,
+            closingPosition: updateData.closing || null,
             score: position.score,
             source: position.source,
             closingDuty: updateData.is_closing_duty || false,
