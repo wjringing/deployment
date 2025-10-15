@@ -34,21 +34,41 @@ const POSITION_TO_STATION_MAP = {
  * 8. Closing training validation for night shifts
  */
 export async function intelligentAutoDeployment(date, shiftType, userConfig = null) {
+  const diagnostics = {
+    startTime: new Date().toISOString(),
+    date,
+    shiftType,
+    steps: [],
+    staffProcessing: []
+  };
+
+  console.group(`🚀 AUTO-ASSIGNMENT DIAGNOSTICS: ${date} - ${shiftType}`);
+
   try {
+    diagnostics.steps.push({ step: 'Loading config', time: new Date().toISOString() });
+
     const { data: oldConfig } = await supabase
       .from('deployment_auto_assignment_config')
       .select('*')
       .eq('config_name', 'default')
       .maybeSingle();
 
+    console.log('📋 Config loaded:', oldConfig);
+    diagnostics.config = oldConfig;
+
     if (!oldConfig || !oldConfig.enabled) {
+      console.warn('⚠️ Auto-assignment is DISABLED');
+      console.groupEnd();
       return {
         error: 'Auto-assignment is disabled',
         assigned: [],
         skipped: [],
-        failed: []
+        failed: [],
+        diagnostics
       };
     }
+
+    diagnostics.steps.push({ step: 'Loading shift info', time: new Date().toISOString() });
 
     const { data: shiftInfo } = await supabase
       .from('shift_info')
@@ -56,17 +76,34 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
       .eq('date', date)
       .maybeSingle();
 
+    console.log('📊 Shift info:', shiftInfo);
+    diagnostics.shiftInfo = shiftInfo;
+
+    diagnostics.steps.push({ step: 'Building assignment context', time: new Date().toISOString() });
+
     const { config: dynamicConfig, context, appliedRules } = await buildAssignmentContext(
       date,
       shiftType,
       shiftInfo
     );
 
+    console.log('⚙️ Dynamic config:', dynamicConfig);
+    console.log('📜 Applied rules:', appliedRules.map(r => r.rule_name));
+    diagnostics.dynamicConfig = dynamicConfig;
+    diagnostics.appliedRules = appliedRules;
+
     if (userConfig) {
       Object.assign(dynamicConfig, userConfig);
+      console.log('🔧 User config override applied:', userConfig);
     }
 
+    diagnostics.steps.push({ step: 'Getting required positions', time: new Date().toISOString() });
+
     const requiredPositions = await getRequiredPositionsByConfig(date, shiftType, dynamicConfig);
+    console.log('✅ Required positions:', requiredPositions);
+    diagnostics.requiredPositions = requiredPositions;
+
+    diagnostics.steps.push({ step: 'Loading deployments', time: new Date().toISOString() });
 
     const { data: deployments, error: deploymentsError } = await supabase
       .from('deployments')
@@ -83,17 +120,36 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
 
     if (deploymentsError) throw deploymentsError;
 
+    console.log(`👥 Found ${deployments?.length || 0} deployments to process`);
+    diagnostics.deploymentsCount = deployments?.length || 0;
+
     const results = {
       assigned: [],
       skipped: [],
       failed: [],
       config: dynamicConfig,
       appliedRules: appliedRules.map(r => r.rule_name),
-      requiredPositions: requiredPositions.map(rp => `${rp.position} (${rp.source})`)
+      requiredPositions: requiredPositions.map(rp => `${rp.position} (${rp.source})`),
+      diagnostics
     };
 
+    console.log('\n👤 Processing staff assignments...');
+    diagnostics.steps.push({ step: 'Processing staff', time: new Date().toISOString() });
+
     for (const deployment of deployments || []) {
+      const staffDiag = {
+        staffName: deployment.staff.name,
+        staffId: deployment.staff.id,
+        deploymentId: deployment.id,
+        steps: []
+      };
+
+      console.group(`\n👤 ${deployment.staff.name}`);
+
       try {
+        staffDiag.steps.push('Finding best position');
+        console.log('🔍 Finding best position...');
+
         const position = await findBestPositionForStaff(
           deployment.staff,
           deployment,
@@ -102,40 +158,70 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           shiftType
         );
 
+        console.log('📍 Best position found:', position);
+        staffDiag.positionFound = position;
+
         if (position) {
           if (isPositionExcluded(position.name, dynamicConfig)) {
+            console.warn(`⚠️ Position ${position.name} is EXCLUDED by configuration`);
+            staffDiag.result = 'excluded';
+            staffDiag.reason = `Position ${position.name} is excluded`;
             results.skipped.push({
               staffName: deployment.staff.name,
               reason: `Position ${position.name} is excluded by configuration`
             });
+            diagnostics.staffProcessing.push(staffDiag);
+            console.groupEnd();
             continue;
           }
 
           const updateData = { position: position.name };
+          staffDiag.primaryPosition = position.name;
+          staffDiag.primaryScore = position.score;
+          staffDiag.primarySource = position.source;
 
+          console.log('🔄 Looking for secondary position...');
           const secondaryPosition = await findSecondaryPosition(deployment.staff.id, position.name, date, shiftType);
           if (secondaryPosition) {
             updateData.secondary_position = secondaryPosition;
+            console.log(`✅ Secondary position: ${secondaryPosition}`);
+            staffDiag.secondaryPosition = secondaryPosition;
+          } else {
+            console.log('❌ No secondary position found');
+            staffDiag.secondaryPosition = null;
           }
 
           if (shiftType === 'Night Shift' || shiftType === 'closing') {
+            console.log('🌙 Processing closing position (Night Shift)...');
             const closingPosition = await findClosingPosition(deployment.staff.id, date, shiftType);
             if (closingPosition) {
               updateData.closing_position = closingPosition;
+              console.log(`✅ Closing position: ${closingPosition}`);
+              staffDiag.closingPosition = closingPosition;
+            } else {
+              console.log('❌ No closing position found');
+              staffDiag.closingPosition = null;
             }
 
             if (position.requiresClosing) {
               updateData.is_closing_duty = true;
               updateData.closing_validated = position.closingValidated || false;
+              console.log(`🔒 Closing duty required: validated=${position.closingValidated || false}`);
+              staffDiag.closingDuty = true;
+              staffDiag.closingValidated = position.closingValidated || false;
             }
           }
 
+          console.log('💾 Updating deployment with:', updateData);
           const { error: updateError } = await supabase
             .from('deployments')
             .update(updateData)
             .eq('id', deployment.id);
 
           if (updateError) throw updateError;
+
+          console.log('✅ Successfully assigned!');
+          staffDiag.result = 'success';
 
           results.assigned.push({
             staffName: deployment.staff.name,
@@ -148,19 +234,39 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
             closingValidated: updateData.closing_validated || false
           });
         } else {
+          console.warn('⚠️ No suitable position found');
+          staffDiag.result = 'no_position';
           results.skipped.push({
             staffName: deployment.staff.name,
             reason: 'No suitable position found'
           });
         }
       } catch (error) {
-        console.error('Error assigning deployment:', error);
+        console.error('❌ Error assigning deployment:', error);
+        staffDiag.result = 'error';
+        staffDiag.error = error.message;
         results.failed.push({
           staffName: deployment.staff?.name,
           error: error.message
         });
       }
+
+      diagnostics.staffProcessing.push(staffDiag);
+      console.groupEnd();
     }
+
+    diagnostics.endTime = new Date().toISOString();
+    diagnostics.summary = {
+      assigned: results.assigned.length,
+      skipped: results.skipped.length,
+      failed: results.failed.length
+    };
+
+    console.log('\n📊 ASSIGNMENT SUMMARY:');
+    console.log(`✅ Assigned: ${results.assigned.length}`);
+    console.log(`⚠️ Skipped: ${results.skipped.length}`);
+    console.log(`❌ Failed: ${results.failed.length}`);
+    console.groupEnd();
 
     return results;
   } catch (error) {
@@ -172,17 +278,22 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
 async function findBestPositionForStaff(staff, deployment, config, dynamicConfig, shiftType) {
   const candidates = [];
 
+  console.log(`  ⚙️ Config: use_default=${config.use_default_positions}, use_training=${config.use_training_stations}`);
+
   if (config.use_default_positions) {
+    console.log('  🔍 Looking for default position candidates...');
     const defaultCandidates = await getDefaultPositionCandidates(
       staff.id,
       deployment.shift_type,
       deployment.date,
       dynamicConfig
     );
+    console.log(`  📍 Default candidates found: ${defaultCandidates.length}`, defaultCandidates.map(c => `${c.name} (score: ${c.score})`));
     candidates.push(...defaultCandidates);
   }
 
   if (config.use_training_stations && candidates.length === 0) {
+    console.log('  🎓 Looking for training-based candidates...');
     const trainingCandidates = await getTrainingBasedCandidates(
       staff.id,
       deployment.shift_type,
@@ -190,10 +301,14 @@ async function findBestPositionForStaff(staff, deployment, config, dynamicConfig
       config,
       dynamicConfig
     );
+    console.log(`  📍 Training candidates found: ${trainingCandidates.length}`, trainingCandidates.map(c => `${c.name} (score: ${c.score})`));
     candidates.push(...trainingCandidates);
   }
 
+  console.log(`  📊 Total candidates before validation: ${candidates.length}`);
+
   if (shiftType === 'Night Shift') {
+    console.log('  🌙 Validating closing training for Night Shift...');
     for (const candidate of candidates) {
       const { data: position } = await supabase
         .from('positions')
@@ -207,12 +322,15 @@ async function findBestPositionForStaff(staff, deployment, config, dynamicConfig
         candidate.requiresClosing = requiresClosing;
 
         if (requiresClosing) {
+          console.log(`    🔒 Position ${candidate.name} requires closing training`);
           const validation = await validateClosingTraining(staff.id, position.id);
           candidate.closingValidated = validation.qualified;
 
           if (!validation.qualified) {
+            console.log(`    ❌ Closing training NOT validated - score penalty -500`);
             candidate.score -= 500;
           } else {
+            console.log(`    ✅ Closing training validated - score bonus +100`);
             candidate.score += 100;
           }
         }
@@ -222,7 +340,19 @@ async function findBestPositionForStaff(staff, deployment, config, dynamicConfig
 
   candidates.sort((a, b) => b.score - a.score);
 
-  return candidates[0] || null;
+  console.log('  🏆 Sorted candidates (best first):');
+  candidates.slice(0, 3).forEach((c, i) => {
+    console.log(`    ${i + 1}. ${c.name} - Score: ${c.score} (${c.source})`);
+  });
+
+  const winner = candidates[0] || null;
+  if (winner) {
+    console.log(`  ✅ Winner: ${winner.name} with score ${winner.score}`);
+  } else {
+    console.log('  ❌ No suitable candidate found');
+  }
+
+  return winner;
 }
 
 async function getDefaultPositionCandidates(staffId, shiftType, date, dynamicConfig) {
@@ -639,7 +769,9 @@ async function findSecondaryPosition(staffId, primaryPositionName, date, shiftTy
  */
 async function findClosingPosition(staffId, date, shiftType) {
   try {
-    const { data: closingTraining } = await supabase
+    console.log(`  🔍 Finding closing position for staff ${staffId}...`);
+
+    const { data: closingTraining, error: trainingError } = await supabase
       .from('staff_closing_training')
       .select(`
         position:position_id (
@@ -650,7 +782,15 @@ async function findClosingPosition(staffId, date, shiftType) {
       .eq('staff_id', staffId)
       .eq('is_trained', true);
 
+    if (trainingError) {
+      console.error('  ❌ Error loading closing training:', trainingError);
+      return null;
+    }
+
+    console.log(`  📚 Closing training records:`, closingTraining);
+
     if (!closingTraining || closingTraining.length === 0) {
+      console.log('  ⚠️ No closing training found for this staff member');
       return null;
     }
 
@@ -658,15 +798,23 @@ async function findClosingPosition(staffId, date, shiftType) {
       .map(ct => ct.position?.id)
       .filter(Boolean);
 
-    if (trainedPositionIds.length === 0) return null;
+    console.log(`  ✅ Trained for closing positions:`, closingTraining.map(ct => ct.position?.name));
+    console.log(`  🆔 Position IDs:`, trainedPositionIds);
 
-    const { data: closingConfig } = await supabase
+    if (trainedPositionIds.length === 0) {
+      console.log('  ⚠️ No valid position IDs found');
+      return null;
+    }
+
+    const { data: closingConfig, error: configError } = await supabase
       .from('closing_position_config')
       .select(`
         deployable_position:deployable_position_id (
           id,
           name
-        )
+        ),
+        cleaning_area_position_id,
+        priority
       `)
       .in('cleaning_area_position_id', trainedPositionIds)
       .eq('is_active', true)
@@ -675,9 +823,23 @@ async function findClosingPosition(staffId, date, shiftType) {
       .limit(1)
       .maybeSingle();
 
-    return closingConfig?.deployable_position?.name || null;
+    if (configError) {
+      console.error('  ❌ Error loading closing config:', configError);
+      return null;
+    }
+
+    console.log(`  ⚙️ Closing config found:`, closingConfig);
+
+    const result = closingConfig?.deployable_position?.name || null;
+    if (result) {
+      console.log(`  ✅ Closing position assigned: ${result}`);
+    } else {
+      console.log('  ⚠️ No closing position config matched');
+    }
+
+    return result;
   } catch (error) {
-    console.error('Error finding closing position:', error);
+    console.error('  ❌ Error finding closing position:', error);
     return null;
   }
 }
