@@ -79,7 +79,7 @@ DO $$
 DECLARE
   mapping_record RECORD;
   new_station_id uuid;
-  station_name_value text;
+  current_station_name text;
 BEGIN
   -- Check if station_name column exists in station_position_mappings
   IF EXISTS (
@@ -89,30 +89,31 @@ BEGIN
   ) THEN
     -- For each row in station_position_mappings that has a station_name but no station_id
     FOR mapping_record IN
-      SELECT id, station_name
+      SELECT id, station_name AS stn_name
       FROM station_position_mappings
       WHERE station_name IS NOT NULL
-      AND (station_id IS NULL OR station_id::text = '')
+      AND station_id IS NULL
     LOOP
-      station_name_value := mapping_record.station_name;
+      -- Store the station name in a variable to avoid column ambiguity
+      current_station_name := mapping_record.stn_name;
 
-      -- Check if station already exists
-      SELECT s.id INTO new_station_id
-      FROM stations s
-      WHERE s.station_name = station_name_value;
+      -- Check if station already exists using the variable
+      SELECT id INTO new_station_id
+      FROM stations
+      WHERE station_name = current_station_name;
 
       -- If station doesn't exist, create it
       IF new_station_id IS NULL THEN
         INSERT INTO stations (station_name, station_code, is_active, display_order)
         VALUES (
-          station_name_value,
-          UPPER(LEFT(REPLACE(station_name_value, ' ', ''), 3)),
+          current_station_name,
+          UPPER(LEFT(REPLACE(current_station_name, ' ', ''), 3)),
           true,
           (SELECT COALESCE(MAX(display_order), 0) + 1 FROM stations)
         )
         RETURNING id INTO new_station_id;
 
-        RAISE NOTICE 'Created new station: % with id: %', station_name_value, new_station_id;
+        RAISE NOTICE 'Created new station: % with id: %', current_station_name, new_station_id;
       END IF;
 
       -- Update the mapping with the station_id
