@@ -3,7 +3,8 @@ import DeploymentCard from './DeploymentCard';
 import DeploymentConfigModal from './DeploymentConfigModal';
 import { exportEnhancedExcel } from '../utils/enhancedExcelExport';
 import { intelligentAutoDeployment } from '../utils/intelligentDeploymentAssignment';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, X, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, RefreshCw, Zap } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, X, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, RefreshCw, Zap, Printer } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const DeploymentPage = ({
   selectedDate,
@@ -57,6 +58,87 @@ const DeploymentPage = ({
   const handleAutoAssignClick = (shiftType) => {
     setPendingShiftType(shiftType);
     setShowConfigModal(true);
+  };
+
+  const handlePrintChecklists = async (shiftType) => {
+    try {
+      const dayOfWeek = new Date(selectedDate).getDay();
+
+      const { data: checklists, error } = await supabase
+        .from('checklists')
+        .select(`
+          *,
+          checklist_items (
+            id,
+            item_text,
+            is_required,
+            display_order
+          )
+        `)
+        .eq('is_active', true)
+        .or(`shift_type.eq.${shiftType},shift_type.eq.Both Shifts`)
+        .or(`day_of_week.is.null,day_of_week.eq.${dayOfWeek}`)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+
+      if (!checklists || checklists.length === 0) {
+        alert('No checklists found for this shift');
+        return;
+      }
+
+      const printWindow = window.open('', '_blank');
+      const checklistsHTML = checklists.map(checklist => `
+        <div style="page-break-after: always; margin-bottom: 20px;">
+          <h2>${checklist.title}</h2>
+          <p><strong>Type:</strong> ${checklist.checklist_type} | <strong>Shift:</strong> ${checklist.shift_type}</p>
+          <p><strong>Date:</strong> ${formatDate(selectedDate)}</p>
+          ${checklist.description ? `<p>${checklist.description}</p>` : ''}
+          <ul style="list-style: none; padding: 0;">
+            ${(checklist.checklist_items || [])
+              .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+              .map(item => `
+                <li style="margin: 10px 0; padding: 10px; border: 1px solid #ddd;">
+                  <input type="checkbox" style="margin-right: 10px;" />
+                  ${item.item_text}
+                  ${item.is_required ? '<span style="color: red;"> *</span>' : ''}
+                </li>
+              `).join('')}
+          </ul>
+          <div style="margin-top: 30px;">
+            <p><strong>Completed by:</strong> ___________________ <strong>Time:</strong> ___________</p>
+            <p><strong>Verified by:</strong> ___________________ <strong>Time:</strong> ___________</p>
+          </div>
+        </div>
+      `).join('');
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>${shiftType} Checklists - ${formatDate(selectedDate)}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; }
+              h1 { color: #c00; }
+              h2 { color: #333; border-bottom: 2px solid #c00; padding-bottom: 5px; }
+              @media print {
+                button { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <h1>${shiftType} Checklists - ${formatDate(selectedDate)}</h1>
+            ${checklistsHTML}
+            <button onclick="window.print()" style="padding: 10px 20px; background: #c00; color: white; border: none; cursor: pointer; margin: 20px 0;">
+              Print Checklists
+            </button>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (error) {
+      console.error('Error loading checklists:', error);
+      alert('Failed to load checklists: ' + error.message);
+    }
   };
 
   const handleConfigConfirm = async (config) => {
@@ -447,6 +529,13 @@ const DeploymentPage = ({
                 <Download className="w-3 h-3" />
                 PDF Day Shift
               </button>
+              <button
+                onClick={() => handlePrintChecklists('Day Shift')}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+              >
+                <Printer className="w-3 h-3" />
+                Checklists
+              </button>
             </div>
           </div>
           
@@ -500,6 +589,13 @@ const DeploymentPage = ({
               >
                 <Download className="w-3 h-3" />
                 PDF Night Shift
+              </button>
+              <button
+                onClick={() => handlePrintChecklists('Night Shift')}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+              >
+                <Printer className="w-3 h-3" />
+                Checklists
               </button>
             </div>
           </div>

@@ -8,6 +8,32 @@ import { autoAssignScheduleToDeployments, matchScheduleEmployeesToStaff } from '
 import ShiftScheduleViewer from './ShiftScheduleViewer';
 import DeleteImportedShifts from './DeleteImportedShifts';
 
+async function getUnmatchedEmployees(scheduleId) {
+  try {
+    const { data: unmatchedEmployees, error } = await supabase
+      .from('schedule_employees')
+      .select(`
+        id,
+        name,
+        role,
+        schedule_shifts (id)
+      `)
+      .eq('schedule_id', scheduleId)
+      .is('staff_id', null);
+
+    if (error) throw error;
+
+    return unmatchedEmployees.map(emp => ({
+      name: emp.name,
+      role: emp.role,
+      shiftCount: emp.schedule_shifts?.length || 0
+    }));
+  } catch (error) {
+    console.error('Error getting unmatched employees:', error);
+    return [];
+  }
+}
+
 export default function ScheduleUploader() {
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -146,9 +172,12 @@ export default function ScheduleUploader() {
         weekStartDate
       );
 
+      const unmatchedEmployees = await getUnmatchedEmployees(scheduleRecord.id);
+
       setAutoAssignResults({
         matches,
-        assignments: assignResults
+        assignments: assignResults,
+        unmatched: unmatchedEmployees
       });
 
     } catch (error) {
@@ -191,6 +220,22 @@ export default function ScheduleUploader() {
                   )}
                   {autoAssignResults.assignments.failed.length > 0 && (
                     <p className="text-red-700">Failed {autoAssignResults.assignments.failed.length} shifts</p>
+                  )}
+                  {autoAssignResults.unmatched && autoAssignResults.unmatched.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-yellow-300">
+                      <p className="text-yellow-800 font-medium mb-2">Unmatched Staff ({autoAssignResults.unmatched.length}):</p>
+                      <div className="text-sm text-yellow-700 space-y-1 max-h-40 overflow-y-auto">
+                        {autoAssignResults.unmatched.map((emp, idx) => (
+                          <div key={idx} className="pl-2">
+                            <span className="font-medium">{emp.name}</span> ({emp.role})
+                            <span className="text-xs ml-2">- {emp.shiftCount} shift{emp.shiftCount !== 1 ? 's' : ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-yellow-600 mt-2 italic">
+                        These staff members need to be added to the system or their names corrected in the schedule.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

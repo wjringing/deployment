@@ -133,6 +133,18 @@ const SettingsPage = ({
                 />
                 <span className="text-sm text-gray-700">Under 18 years old</span>
               </label>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Hourly Rate (£)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder={newStaff.is_under_18 ? "Under 18 rate" : "Team member rate"}
+                  value={newStaff.hourly_rate || ''}
+                  onChange={(e) => setNewStaff({ ...newStaff, hourly_rate: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
               <button
                 onClick={onAddStaff}
                 disabled={uiLoading || !newStaff.name.trim()}
@@ -148,13 +160,18 @@ const SettingsPage = ({
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {supabaseStaff.map((staff) => (
               <div key={staff.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <span className="font-medium text-gray-900">{staff.name}</span>
-                  {staff.is_under_18 && (
-                    <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                      Under 18
-                    </span>
-                  )}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">{staff.name}</span>
+                    {staff.is_under_18 && (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Under 18
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    £{(staff.hourly_rate || 0).toFixed(2)}/hour
+                  </div>
                 </div>
                 <button
                   onClick={() => onRemoveStaff(staff.id)}
