@@ -58,12 +58,12 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
       .eq('config_name', 'default')
       .maybeSingle();
 
-    console.log('📋 Config loaded:', oldConfig);
+    log('📋 Config loaded:', oldConfig);
     diagnostics.config = oldConfig;
 
     if (!oldConfig || !oldConfig.enabled) {
-      console.warn('⚠️ Auto-assignment is DISABLED');
-      console.groupEnd();
+      warn('⚠️ Auto-assignment is DISABLED');
+      groupEnd();
       return {
         error: 'Auto-assignment is disabled',
         assigned: [],
@@ -81,7 +81,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
       .eq('date', date)
       .maybeSingle();
 
-    console.log('📊 Shift info:', shiftInfo);
+    log('📊 Shift info:', shiftInfo);
     diagnostics.shiftInfo = shiftInfo;
 
     diagnostics.steps.push({ step: 'Building assignment context', time: new Date().toISOString() });
@@ -92,20 +92,20 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
       shiftInfo
     );
 
-    console.log('⚙️ Dynamic config:', dynamicConfig);
-    console.log('📜 Applied rules:', appliedRules.map(r => r.rule_name));
+    log('⚙️ Dynamic config:', dynamicConfig);
+    log('📜 Applied rules:', appliedRules.map(r => r.rule_name));
     diagnostics.dynamicConfig = dynamicConfig;
     diagnostics.appliedRules = appliedRules;
 
     if (userConfig) {
       Object.assign(dynamicConfig, userConfig);
-      console.log('🔧 User config override applied:', userConfig);
+      log('🔧 User config override applied:', userConfig);
     }
 
     diagnostics.steps.push({ step: 'Getting required positions', time: new Date().toISOString() });
 
     const requiredPositions = await getRequiredPositionsByConfig(date, shiftType, dynamicConfig);
-    console.log('✅ Required positions:', requiredPositions);
+    log('✅ Required positions:', requiredPositions);
     diagnostics.requiredPositions = requiredPositions;
 
     diagnostics.steps.push({ step: 'Loading deployments', time: new Date().toISOString() });
@@ -125,7 +125,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
 
     if (deploymentsError) throw deploymentsError;
 
-    console.log(`👥 Found ${deployments?.length || 0} deployments to process`);
+    log(`👥 Found ${deployments?.length || 0} deployments to process`);
     diagnostics.deploymentsCount = deployments?.length || 0;
 
     const results = {
@@ -138,7 +138,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
       diagnostics
     };
 
-    console.log('\n👤 Processing staff assignments...');
+    log('\n👤 Processing staff assignments...');
     diagnostics.steps.push({ step: 'Processing staff', time: new Date().toISOString() });
 
     for (const deployment of deployments || []) {
@@ -149,11 +149,11 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
         steps: []
       };
 
-      console.group(`\n👤 ${deployment.staff.name}`);
+      group(`\n👤 ${deployment.staff.name}`);
 
       try {
         staffDiag.steps.push('Finding best position');
-        console.log('🔍 Finding best position...');
+        log('🔍 Finding best position...');
 
         const position = await findBestPositionForStaff(
           deployment.staff,
@@ -164,12 +164,12 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           enableDiagnostics
         );
 
-        console.log('📍 Best position found:', position);
+        log('📍 Best position found:', position);
         staffDiag.positionFound = position;
 
         if (position) {
           if (isPositionExcluded(position.name, dynamicConfig)) {
-            console.warn(`⚠️ Position ${position.name} is EXCLUDED by configuration`);
+            warn(`⚠️ Position ${position.name} is EXCLUDED by configuration`);
             staffDiag.result = 'excluded';
             staffDiag.reason = `Position ${position.name} is excluded`;
             results.skipped.push({
@@ -177,7 +177,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
               reason: `Position ${position.name} is excluded by configuration`
             });
             diagnostics.staffProcessing.push(staffDiag);
-            console.groupEnd();
+            groupEnd();
             continue;
           }
 
@@ -186,39 +186,39 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           staffDiag.primaryScore = position.score;
           staffDiag.primarySource = position.source;
 
-          console.log('🔄 Looking for secondary position...');
+          log('🔄 Looking for secondary position...');
           const secondaryPosition = await findSecondaryPosition(deployment.staff.id, position.name, date, shiftType);
           if (secondaryPosition) {
             updateData.secondary = secondaryPosition;
-            console.log(`✅ Secondary position: ${secondaryPosition}`);
+            log(`✅ Secondary position: ${secondaryPosition}`);
             staffDiag.secondaryPosition = secondaryPosition;
           } else {
-            console.log('❌ No secondary position found');
+            log('❌ No secondary position found');
             staffDiag.secondaryPosition = null;
           }
 
           if (shiftType === 'Night Shift' || shiftType === 'closing') {
-            console.log('🌙 Processing closing position (Night Shift)...');
+            log('🌙 Processing closing position (Night Shift)...');
             const closingPosition = await findClosingPosition(deployment.staff.id, date, shiftType);
             if (closingPosition) {
               updateData.closing = closingPosition;
-              console.log(`✅ Closing position: ${closingPosition}`);
+              log(`✅ Closing position: ${closingPosition}`);
               staffDiag.closingPosition = closingPosition;
             } else {
-              console.log('❌ No closing position found');
+              log('❌ No closing position found');
               staffDiag.closingPosition = null;
             }
 
             if (position.requiresClosing) {
               updateData.is_closing_duty = true;
               updateData.closing_validated = position.closingValidated || false;
-              console.log(`🔒 Closing duty required: validated=${position.closingValidated || false}`);
+              log(`🔒 Closing duty required: validated=${position.closingValidated || false}`);
               staffDiag.closingDuty = true;
               staffDiag.closingValidated = position.closingValidated || false;
             }
           }
 
-          console.log('💾 Updating deployment with:', updateData);
+          log('💾 Updating deployment with:', updateData);
           const { error: updateError } = await supabase
             .from('deployments')
             .update(updateData)
@@ -226,7 +226,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
 
           if (updateError) throw updateError;
 
-          console.log('✅ Successfully assigned!');
+          log('✅ Successfully assigned!');
           staffDiag.result = 'success';
 
           results.assigned.push({
@@ -240,7 +240,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
             closingValidated: updateData.closing_validated || false
           });
         } else {
-          console.warn('⚠️ No suitable position found');
+          warn('⚠️ No suitable position found');
           staffDiag.result = 'no_position';
           results.skipped.push({
             staffName: deployment.staff.name,
@@ -248,7 +248,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
           });
         }
       } catch (error) {
-        console.error('❌ Error assigning deployment:', error);
+        enableDiagnostics && console.error('❌ Error assigning deployment:', error);
         staffDiag.result = 'error';
         staffDiag.error = error.message;
         results.failed.push({
@@ -258,7 +258,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
       }
 
       diagnostics.staffProcessing.push(staffDiag);
-      console.groupEnd();
+      groupEnd();
     }
 
     diagnostics.endTime = new Date().toISOString();
@@ -268,15 +268,15 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
       failed: results.failed.length
     };
 
-    console.log('\n📊 ASSIGNMENT SUMMARY:');
-    console.log(`✅ Assigned: ${results.assigned.length}`);
-    console.log(`⚠️ Skipped: ${results.skipped.length}`);
-    console.log(`❌ Failed: ${results.failed.length}`);
-    console.groupEnd();
+    log('\n📊 ASSIGNMENT SUMMARY:');
+    log(`✅ Assigned: ${results.assigned.length}`);
+    log(`⚠️ Skipped: ${results.skipped.length}`);
+    log(`❌ Failed: ${results.failed.length}`);
+    groupEnd();
 
     return results;
   } catch (error) {
-    console.error('Error in intelligent auto deployment:', error);
+    enableDiagnostics && console.error('Error in intelligent auto deployment:', error);
     throw error;
   }
 }
