@@ -32,8 +32,8 @@ export default function AutoAssignmentRulesPage() {
     priority: 100,
     is_active: true,
     rule_type: 'skill_based',
-    conditions: {},
-    actions: {}
+    conditions: '{}',
+    actions: '{}'
   });
 
   useEffect(() => {
@@ -85,14 +85,34 @@ export default function AutoAssignmentRulesPage() {
     }
 
     try {
+      let conditions = {};
+      let actions = {};
+
+      try {
+        conditions = typeof formData.conditions === 'string'
+          ? (formData.conditions.trim() ? JSON.parse(formData.conditions) : {})
+          : formData.conditions || {};
+      } catch (e) {
+        toast.error('Invalid JSON in conditions field');
+        return;
+      }
+
+      try {
+        actions = typeof formData.actions === 'string'
+          ? (formData.actions.trim() ? JSON.parse(formData.actions) : {})
+          : formData.actions || {};
+      } catch (e) {
+        toast.error('Invalid JSON in actions field');
+        return;
+      }
+
       const ruleData = {
-        ...formData,
-        conditions: typeof formData.conditions === 'string'
-          ? JSON.parse(formData.conditions)
-          : formData.conditions,
-        actions: typeof formData.actions === 'string'
-          ? JSON.parse(formData.actions)
-          : formData.actions
+        rule_name: formData.rule_name,
+        priority: formData.priority,
+        is_active: formData.is_active,
+        rule_type: formData.rule_type,
+        conditions: conditions,
+        actions: actions
       };
 
       if (editingRule) {
@@ -104,19 +124,25 @@ export default function AutoAssignmentRulesPage() {
         if (error) throw error;
         toast.success('Rule updated successfully');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('auto_assignment_rules')
-          .insert([ruleData]);
+          .insert([ruleData])
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error details:', error);
+          throw error;
+        }
+
+        console.log('Rule created:', data);
         toast.success('Rule created successfully');
       }
 
       resetForm();
-      loadData();
+      await loadData();
     } catch (error) {
       console.error('Error saving rule:', error);
-      toast.error('Failed to save rule');
+      toast.error('Failed to save rule: ' + error.message);
     }
   };
 
@@ -194,8 +220,8 @@ export default function AutoAssignmentRulesPage() {
       priority: 100,
       is_active: true,
       rule_type: 'skill_based',
-      conditions: {},
-      actions: {}
+      conditions: '{}',
+      actions: '{}'
     });
   };
 

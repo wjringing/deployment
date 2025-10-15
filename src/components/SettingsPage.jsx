@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin, Upload, Star, Link2 } from 'lucide-react';
+import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin, Upload, Star, Link2, Edit2, Check, X } from 'lucide-react';
 import StaffCsvImporter from './StaffCsvImporter';
 import StaffDefaultPositionsManager from './StaffDefaultPositionsManager';
 import PositionRelationshipsManager from './PositionRelationshipsManager';
+import { supabase } from '../lib/supabase';
 
 const SettingsPage = ({
   supabaseStaff,
@@ -27,11 +28,50 @@ const SettingsPage = ({
 }) => {
   const [showCsvImporter, setShowCsvImporter] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const [editingStaffId, setEditingStaffId] = useState(null);
+  const [editingRate, setEditingRate] = useState('');
 
   const handleImportComplete = () => {
     if (onStaffDataChange) {
       onStaffDataChange();
     }
+  };
+
+  const handleEditRate = (staffId, currentRate) => {
+    setEditingStaffId(staffId);
+    setEditingRate(currentRate.toString());
+  };
+
+  const handleSaveRate = async (staffId) => {
+    try {
+      const rate = parseFloat(editingRate);
+      if (isNaN(rate) || rate < 0) {
+        alert('Please enter a valid hourly rate');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('staff')
+        .update({ hourly_rate: rate })
+        .eq('id', staffId);
+
+      if (error) throw error;
+
+      setEditingStaffId(null);
+      setEditingRate('');
+
+      if (onStaffDataChange) {
+        onStaffDataChange();
+      }
+    } catch (error) {
+      console.error('Error updating hourly rate:', error);
+      alert('Failed to update hourly rate: ' + error.message);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStaffId(null);
+    setEditingRate('');
   };
 
   return (
@@ -159,7 +199,7 @@ const SettingsPage = ({
           {/* Staff List */}
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {supabaseStaff.map((staff) => (
-              <div key={staff.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={staff.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900">{staff.name}</span>
@@ -169,9 +209,45 @@ const SettingsPage = ({
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    £{(staff.hourly_rate || 0).toFixed(2)}/hour
-                  </div>
+                  {editingStaffId === staff.id ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-gray-600">£</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editingRate}
+                        onChange={(e) => setEditingRate(e.target.value)}
+                        className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autoFocus
+                      />
+                      <span className="text-sm text-gray-600">/hour</span>
+                      <button
+                        onClick={() => handleSaveRate(staff.id)}
+                        className="text-green-600 hover:text-green-800 p-1"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="text-gray-600 hover:text-gray-800 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-gray-600">
+                        £{(staff.hourly_rate || 0).toFixed(2)}/hour
+                      </span>
+                      <button
+                        onClick={() => handleEditRate(staff.id, staff.hourly_rate || 0)}
+                        className="text-blue-600 hover:text-blue-800 p-1"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => onRemoveStaff(staff.id)}
