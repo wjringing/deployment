@@ -146,7 +146,7 @@ const DeploymentPage = ({
       setShowConfigModal(false);
       setAutoAssigning(true);
 
-      const results = await intelligentAutoDeployment(selectedDate, pendingShiftType, config);
+      const results = await intelligentAutoDeployment(selectedDate, pendingShiftType, config, false);
       setAutoAssignResults(results);
       setShowAutoAssignModal(true);
 
