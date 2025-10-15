@@ -42,7 +42,7 @@ END $$;
 -- Update existing deployments to set shift type based on start time
 UPDATE deployments 
 SET shift_type = CASE 
-  WHEN start_time >= '06:00' AND start_time < '18:00' THEN 'Day Shift'
+  WHEN start_time >= '06:00' AND start_time < '16:00' THEN 'Day Shift'
   ELSE 'Night Shift'
 END
 WHERE shift_type IS NULL OR shift_type = 'Day Shift';
