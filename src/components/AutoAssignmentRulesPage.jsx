@@ -65,14 +65,21 @@ export default function AutoAssignmentRulesPage() {
           .limit(50)
       ]);
 
-      if (rulesRes.error) throw rulesRes.error;
-      if (historyRes.error) throw historyRes.error;
+      if (rulesRes.error) {
+        console.error('Rules load error:', rulesRes.error);
+        throw rulesRes.error;
+      }
+      if (historyRes.error) {
+        console.error('History load error:', historyRes.error);
+        throw historyRes.error;
+      }
 
+      console.log('Loaded rules:', rulesRes.data);
       setRules(rulesRes.data || []);
       setAssignmentHistory(historyRes.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Failed to load assignment rules');
+      toast.error('Failed to load assignment rules: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -115,6 +122,8 @@ export default function AutoAssignmentRulesPage() {
         actions: actions
       };
 
+      console.log('Saving rule data:', ruleData);
+
       if (editingRule) {
         const { error } = await supabase
           .from('auto_assignment_rules')
@@ -124,6 +133,7 @@ export default function AutoAssignmentRulesPage() {
         if (error) throw error;
         toast.success('Rule updated successfully');
       } else {
+        console.log('Inserting new rule...');
         const { data, error } = await supabase
           .from('auto_assignment_rules')
           .insert([ruleData])
@@ -134,12 +144,15 @@ export default function AutoAssignmentRulesPage() {
           throw error;
         }
 
-        console.log('Rule created:', data);
+        console.log('Rule created successfully:', data);
         toast.success('Rule created successfully');
       }
 
+      console.log('Resetting form...');
       resetForm();
+      console.log('Reloading data...');
       await loadData();
+      console.log('Data reloaded.');
     } catch (error) {
       console.error('Error saving rule:', error);
       toast.error('Failed to save rule: ' + error.message);

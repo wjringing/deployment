@@ -17,7 +17,8 @@ import {
   Save,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  Settings
 } from 'lucide-react';
 
 export default function PerformanceScorecardPage() {
@@ -25,6 +26,8 @@ export default function PerformanceScorecardPage() {
   const [selectedScorecard, setSelectedScorecard] = useState(null);
   const [mode, setMode] = useState('view');
   const [loading, setLoading] = useState(false);
+  const [kpis, setKpis] = useState([]);
+  const [showKpiEditor, setShowKpiEditor] = useState(false);
 
   const [formData, setFormData] = useState({
     shift_date: new Date().toISOString().split('T')[0],
@@ -43,6 +46,7 @@ export default function PerformanceScorecardPage() {
 
   useEffect(() => {
     loadScorecards();
+    loadKpis();
   }, []);
 
   useEffect(() => {
@@ -68,6 +72,38 @@ export default function PerformanceScorecardPage() {
     } catch (error) {
       console.error('Error loading scorecards:', error);
       toast.error('Failed to load performance scorecards');
+    }
+  };
+
+  const loadKpis = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('performance_kpis')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+      setKpis(data || []);
+    } catch (error) {
+      console.error('Error loading KPIs:', error);
+      toast.error('Failed to load KPIs');
+    }
+  };
+
+  const handleUpdateKpi = async (id, updates) => {
+    try {
+      const { error } = await supabase
+        .from('performance_kpis')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('KPI updated successfully');
+      loadKpis();
+    } catch (error) {
+      console.error('Error updating KPI:', error);
+      toast.error('Failed to update KPI');
     }
   };
 
@@ -248,12 +284,68 @@ export default function PerformanceScorecardPage() {
           </p>
         </div>
         {mode === 'view' && (
-          <Button onClick={() => setMode('create')}>
-            <Star className="h-4 w-4 mr-2" />
-            Create Scorecard
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowKpiEditor(!showKpiEditor)}>
+              <Settings className="h-4 w-4 mr-2" />
+              {showKpiEditor ? 'Hide' : 'Configure'} KPIs
+            </Button>
+            <Button onClick={() => setMode('create')}>
+              <Star className="h-4 w-4 mr-2" />
+              Create Scorecard
+            </Button>
+          </div>
         )}
       </div>
+
+      {showKpiEditor && mode === 'view' && (
+        <Card className="p-6">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Configure KPI Weights
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Adjust the weight (importance) of each KPI. Total should equal 100%.
+          </p>
+
+          <div className="space-y-4">
+            {kpis.map((kpi) => (
+              <div key={kpi.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">{kpi.kpi_name}</div>
+                  <div className="text-sm text-gray-600">{kpi.description}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={kpi.weight}
+                    onChange={(e) => {
+                      const newWeight = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0));
+                      handleUpdateKpi(kpi.id, { weight: newWeight });
+                    }}
+                    className="w-20"
+                  />
+                  <span className="text-sm font-medium text-gray-700">%</span>
+                </div>
+              </div>
+            ))}
+
+            {kpis.length > 0 && (
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                <span className="font-semibold text-gray-900">Total Weight:</span>
+                <span className={`text-lg font-bold ${
+                  kpis.reduce((sum, kpi) => sum + parseFloat(kpi.weight), 0) === 100
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}>
+                  {kpis.reduce((sum, kpi) => sum + parseFloat(kpi.weight), 0).toFixed(1)}%
+                </span>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {mode !== 'view' && (
         <Card className="p-6">
