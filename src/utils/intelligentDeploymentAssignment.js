@@ -42,10 +42,10 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
     staffProcessing: []
   };
 
-  const log = (...args) => { try { enableDiagnostics && console.log(...args); } catch(e) {} };
-  const warn = (...args) => { try { enableDiagnostics && console.warn(...args); } catch(e) {} };
-  const group = (...args) => { try { enableDiagnostics && console.group(...args); } catch(e) {} };
-  const groupEnd = () => { try { enableDiagnostics && console.groupEnd(); } catch(e) {} };
+  const log = enableDiagnostics ? console.log.bind(console) : () => {};
+  const warn = enableDiagnostics ? console.warn.bind(console) : () => {};
+  const group = enableDiagnostics ? console.group.bind(console) : () => {};
+  const groupEnd = enableDiagnostics ? console.groupEnd.bind(console) : () => {};
 
   group(`🚀 AUTO-ASSIGNMENT DIAGNOSTICS: ${date} - ${shiftType}`);
 
@@ -283,7 +283,7 @@ export async function intelligentAutoDeployment(date, shiftType, userConfig = nu
 
 async function findBestPositionForStaff(staff, deployment, config, dynamicConfig, shiftType, enableDiagnostics = false) {
   const candidates = [];
-  const log = (...args) => { try { enableDiagnostics && console.log(...args); } catch(e) {} };
+  const log = enableDiagnostics ? console.log.bind(console) : () => {};
 
   if (config.use_default_positions) {
     const defaultCandidates = await getDefaultPositionCandidates(
