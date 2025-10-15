@@ -1,0 +1,11 @@
+staff_name,station_name,is_trained,trained_date,is_primary_station,is_closing_trained,closing_trained_date,job_code,training_notes
+John Smith,BOH Cook,true,2025-01-15,true,true,2025-02-01,Cook,Excellent on grill
+John Smith,BOH Chicken,true,2025-01-20,false,true,2025-02-05,Cook,Fast and accurate
+John Smith,FOH Cashier,true,2025-02-10,false,false,,Cook,Cross-training completed
+Jane Doe,FOH Cashier,true,2025-01-10,true,false,,Team Member,Primary position
+Jane Doe,FOH Drive-Thru,true,2025-01-25,false,false,,Team Member,Window 1 certified
+Jane Doe,FOH Expeditor,true,2025-02-01,false,true,2025-02-15,Team Member,Closing certified
+Mike Johnson,BOH Fry,true,2025-01-05,true,true,2025-01-20,Team Member,Closing duties trained
+Mike Johnson,BOH Prep,true,2025-01-12,false,false,,Team Member,Morning prep only
+Sarah Williams,FOH Manager Station,true,2025-01-01,true,true,2025-01-01,Shift Runner,Full closing authority
+Sarah Williams,BOH Cook,true,2025-01-08,false,true,2025-01-15,Shift Runner,Backup position
