@@ -31,6 +31,20 @@ const MainRouter = () => {
     return `${year}-${month}-${day}`;
   });
 
+  const [newDeployment, setNewDeployment] = useState({
+    staff_id: '',
+    start_time: '',
+    end_time: '',
+    position: '',
+    secondary: '',
+    area: '',
+    closing: '',
+    shift_type: 'Day Shift'
+  });
+
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateFromDate, setDuplicateFromDate] = useState('');
+
   const {
     staff: supabaseStaff,
     positions: supabasePositions,
@@ -144,6 +158,12 @@ const MainRouter = () => {
             supabaseStaff={supabaseStaff}
             supabaseTargets={supabaseTargets}
             supabasePositions={supabasePositions}
+            newDeployment={newDeployment}
+            setNewDeployment={setNewDeployment}
+            showDuplicateModal={showDuplicateModal}
+            setShowDuplicateModal={setShowDuplicateModal}
+            duplicateFromDate={duplicateFromDate}
+            setDuplicateFromDate={setDuplicateFromDate}
             onAddDeployment={addDeployment}
             onRemoveDeployment={removeDeployment}
             onUpdateDeployment={updateDeployment}
