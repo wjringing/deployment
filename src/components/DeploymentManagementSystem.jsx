@@ -845,50 +845,49 @@ const DeploymentManagementSystem = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-primary shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center gap-3">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-[1600px] mx-auto px-6">
+          <div className="flex justify-between items-center py-3">
+            <div className="flex items-center gap-6">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors"
               >
-                <Menu className="w-6 h-6" />
+                <Menu className="w-5 h-5" />
               </button>
-              <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
-                <div className="bg-white p-2 rounded-lg">
-                  <DragDropIcon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+              <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <div className="bg-primary p-1.5 rounded">
+                  <DragDropIcon className="w-5 h-5 text-white" />
                 </div>
-                <span className="hidden sm:inline">KFC Deployment Manager</span>
-                <span className="sm:hidden">KFC</span>
+                <span className="hidden sm:inline">KFC Deployment</span>
               </h1>
               {isDragging && (
-                <div className="hidden md:flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-semibold animate-pulse border border-white/30">
+                <div className="hidden md:flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-medium animate-pulse border border-primary/20">
                   <GripVertical className="w-4 h-4" />
                   Drag Mode Active
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {/* Desktop Navigation */}
               <nav className="hidden lg:flex items-center gap-1">
                 {Object.entries(navigationGroups).map(([key, group]) => (
                   <div key={key} className="relative">
                     <button
                       onClick={() => setOpenDropdown(openDropdown === key ? null : key)}
-                      className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 ${
+                      className={`px-4 py-2 rounded flex items-center gap-2 transition-all duration-150 text-[15px] ${
                         group.items.some(item => item.id === currentPage)
-                          ? 'bg-white text-primary font-semibold shadow-sm'
-                          : 'text-white hover:bg-white/10'
+                          ? 'text-primary font-semibold'
+                          : 'text-gray-700 hover:text-primary hover:bg-gray-50'
                       }`}
                     >
-                      <group.icon className="w-4 h-4" />
-                      <span className="text-sm">{group.label}</span>
-                      <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === key ? 'rotate-180' : ''}`} />
+                      <group.icon className="w-[18px] h-[18px]" />
+                      <span>{group.label}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === key ? 'rotate-180' : ''}`} />
                     </button>
                     {openDropdown === key && (
-                      <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border min-w-[220px] py-2 z-50 animate-slide-down">
+                      <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[200px] py-1 z-50 animate-slide-down">
                         {group.items.map(item => (
                           <button
                             key={item.id}
@@ -900,14 +899,14 @@ const DeploymentManagementSystem = () => {
                               }
                               setOpenDropdown(null);
                             }}
-                            className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-all duration-200 ${
+                            className={`w-full px-4 py-2 text-left flex items-center gap-2 transition-all duration-150 text-[15px] ${
                               currentPage === item.id
-                                ? 'bg-primary-light text-primary font-semibold'
+                                ? 'bg-primary/5 text-primary font-medium'
                                 : 'text-gray-700 hover:bg-gray-50'
                             }`}
                           >
-                            <item.icon className="w-4 h-4" />
-                            <span className="text-sm">{item.label}</span>
+                            <item.icon className="w-[18px] h-[18px]" />
+                            <span>{item.label}</span>
                           </button>
                         ))}
                       </div>
@@ -918,7 +917,7 @@ const DeploymentManagementSystem = () => {
 
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
+                className="p-2 rounded hover:bg-gray-100 text-gray-700 transition-colors ml-2"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />
@@ -975,13 +974,13 @@ const DeploymentManagementSystem = () => {
 
       {/* Error Display */}
       {uiError && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-4 flex items-center justify-between shadow-sm animate-slide-down">
+        <div className="max-w-[1600px] mx-auto px-6 pt-6">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center justify-between shadow-sm animate-slide-down">
             <div className="flex items-center gap-3">
               <div className="bg-destructive/20 p-2 rounded-full">
                 <AlertCircle className="w-5 h-5 text-destructive" />
               </div>
-              <span className="text-destructive font-medium">{uiError}</span>
+              <span className="text-destructive font-medium text-[15px]">{uiError}</span>
             </div>
             <button
               onClick={() => setUiError('')}
@@ -994,7 +993,7 @@ const DeploymentManagementSystem = () => {
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-[1600px] mx-auto px-6 py-6">
         {currentPage === 'deployment' && (
           <DeploymentPage
             selectedDate={selectedDate}
