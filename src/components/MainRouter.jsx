@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Spin } from 'antd';
 import DragDropDeployment from './DragDropDeployment';
 import DeploymentPage from './DeploymentPage';
 import SettingsPage from './SettingsPage';
@@ -22,6 +23,14 @@ import FixedClosingPositionsPage from './FixedClosingPositionsPage';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 
 const MainRouter = () => {
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+
   const {
     staff: supabaseStaff,
     positions: supabasePositions,
@@ -54,22 +63,53 @@ const MainRouter = () => {
     loadAllData
   } = useSupabaseData();
 
-  // Loading state
+  const currentDeployments = deploymentsByDate[selectedDate] || [];
+  const currentShiftInfo = shiftInfoByDate[selectedDate] || {
+    forecast: '£0.00',
+    day_shift_forecast: '£0.00',
+    night_shift_forecast: '£0.00',
+    weather: '',
+    notes: ''
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const calculateWorkHours = (startTime, endTime) => {
+    if (!startTime || !endTime) return '0:00';
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    let hours = endHour - startHour;
+    let minutes = endMin - startMin;
+    if (minutes < 0) {
+      hours -= 1;
+      minutes += 60;
+    }
+    return `${hours}:${String(minutes).padStart(2, '0')}`;
+  };
+
+  const calculateBreakTime = (startTime, endTime) => {
+    const workHours = calculateWorkHours(startTime, endTime);
+    const [hours] = workHours.split(':').map(Number);
+    if (hours >= 6) return '00:30';
+    return '00:00';
+  };
+
   if (supabaseLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="relative w-16 h-16 mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-red-200 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <p className="text-gray-900 text-lg font-medium">Loading...</p>
-        </div>
+        <Spin size="large" tip="Loading..." />
       </div>
     );
   }
 
-  // Error state
   if (supabaseError) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -97,16 +137,23 @@ const MainRouter = () => {
         path="/deployment"
         element={
           <DeploymentPage
-            deployments={deploymentsByDate}
-            shiftInfo={shiftInfoByDate}
-            staff={supabaseStaff}
-            positions={supabasePositions}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            currentDeployments={currentDeployments}
+            currentShiftInfo={currentShiftInfo}
+            supabaseStaff={supabaseStaff}
+            supabaseTargets={supabaseTargets}
+            supabasePositions={supabasePositions}
             onAddDeployment={addDeployment}
             onRemoveDeployment={removeDeployment}
             onUpdateDeployment={updateDeployment}
             onUpdateShiftInfo={updateShiftInfo}
             onDuplicateDeployments={duplicateDeployments}
-            onDeleteAll={deleteAllDeployments}
+            onDeleteAllDeployments={deleteAllDeployments}
+            onRefreshData={loadAllData}
+            formatDate={formatDate}
+            calculateWorkHours={calculateWorkHours}
+            calculateBreakTime={calculateBreakTime}
           />
         }
       />

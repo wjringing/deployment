@@ -119,31 +119,27 @@ const AppLayout = ({ children }) => {
     setMobileOpen(false);
   };
 
-  const userMenu = (
-    <Menu
-      items={[
-        {
-          key: 'user-info',
-          label: (
-            <div className="px-2 py-1">
-              <div className="font-semibold">{user?.email}</div>
-              <div className="text-xs text-gray-500">
-                {userProfile?.role || 'User'}
-              </div>
-            </div>
-          ),
-          disabled: true,
-        },
-        { type: 'divider' },
-        {
-          key: 'logout',
-          label: 'Logout',
-          icon: <LogoutOutlined />,
-          onClick: handleLogout,
-        },
-      ]}
-    />
-  );
+  const userMenuItems = [
+    {
+      key: 'user-info',
+      label: (
+        <div className="px-2 py-1">
+          <div className="font-semibold">{user?.email}</div>
+          <div className="text-xs text-gray-500">
+            {userProfile?.role || 'User'}
+          </div>
+        </div>
+      ),
+      disabled: true,
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      label: 'Logout',
+      icon: <LogoutOutlined />,
+      onClick: handleLogout,
+    },
+  ];
 
   // Find current selected keys
   const getCurrentSelectedKeys = () => {
@@ -181,7 +177,7 @@ const AppLayout = ({ children }) => {
 
         {/* Right side - User menu and mobile toggle */}
         <Space size="middle">
-          <Dropdown overlay={userMenu} placement="bottomRight" trigger={['click']}>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
             <Button type="text" className="flex items-center gap-2">
               <Avatar
                 size="small"
