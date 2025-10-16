@@ -729,10 +729,14 @@ const DeploymentManagementSystem = () => {
   // Loading state
   if (supabaseLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Loading deployment system...</p>
+          <div className="relative w-16 h-16 mx-auto mb-6">
+            <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-foreground text-lg font-medium">Loading deployment system...</p>
+          <p className="text-muted-foreground text-sm mt-2">Please wait</p>
         </div>
       </div>
     );
@@ -741,15 +745,18 @@ const DeploymentManagementSystem = () => {
   // Error state
   if (supabaseError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">System Error</h2>
-          <p className="text-gray-600 mb-4">{supabaseError}</p>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-md bg-white rounded-lg shadow-lg p-8 border-2 border-destructive/20">
+          <div className="bg-destructive/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-10 h-10 text-destructive" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">System Error</h2>
+          <p className="text-muted-foreground mb-6">{supabaseError}</p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
+            className="btn-primary inline-flex items-center gap-2"
           >
+            <CheckCircle className="w-4 h-4" />
             Reload Application
           </button>
         </div>
@@ -811,25 +818,29 @@ const DeploymentManagementSystem = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-50">
+      <div className="bg-primary shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-3">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+                className="lg:hidden p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
               >
                 <Menu className="w-6 h-6" />
               </button>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <DragDropIcon className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
-                <span className="hidden sm:inline">KFC Deployment</span>
+              <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
+                <div className="bg-white p-2 rounded-lg">
+                  <DragDropIcon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                </div>
+                <span className="hidden sm:inline">KFC Deployment Manager</span>
+                <span className="sm:hidden">KFC</span>
               </h1>
               {isDragging && (
-                <div className="hidden md:block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-                  Drag Mode
+                <div className="hidden md:flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-semibold animate-pulse border border-white/30">
+                  <GripVertical className="w-4 h-4" />
+                  Drag Mode Active
                 </div>
               )}
             </div>
@@ -841,18 +852,18 @@ const DeploymentManagementSystem = () => {
                   <div key={key} className="relative">
                     <button
                       onClick={() => setOpenDropdown(openDropdown === key ? null : key)}
-                      className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 ${
                         group.items.some(item => item.id === currentPage)
-                          ? 'bg-red-100 text-red-700 font-medium'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                          ? 'bg-white text-primary font-semibold shadow-sm'
+                          : 'text-white hover:bg-white/10'
                       }`}
                     >
                       <group.icon className="w-4 h-4" />
                       <span className="text-sm">{group.label}</span>
-                      <ChevronDown className="w-3 h-3" />
+                      <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === key ? 'rotate-180' : ''}`} />
                     </button>
                     {openDropdown === key && (
-                      <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border min-w-[200px] py-1 z-50">
+                      <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border min-w-[220px] py-2 z-50 animate-slide-down">
                         {group.items.map(item => (
                           <button
                             key={item.id}
@@ -860,9 +871,9 @@ const DeploymentManagementSystem = () => {
                               setCurrentPage(item.id);
                               setOpenDropdown(null);
                             }}
-                            className={`w-full px-4 py-2 text-left flex items-center gap-2 transition-colors ${
+                            className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-all duration-200 ${
                               currentPage === item.id
-                                ? 'bg-red-50 text-red-700'
+                                ? 'bg-primary-light text-primary font-semibold'
                                 : 'text-gray-700 hover:bg-gray-50'
                             }`}
                           >
@@ -878,7 +889,7 @@ const DeploymentManagementSystem = () => {
 
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />
@@ -890,18 +901,18 @@ const DeploymentManagementSystem = () => {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)}>
-          <div className="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="font-bold text-lg">Menu</h2>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+        <div className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-60 backdrop-blur-sm animate-fade-in" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute left-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white shadow-2xl overflow-y-auto animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="bg-primary p-4 flex items-center justify-between">
+              <h2 className="font-bold text-lg text-white">Menu</h2>
+              <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-lg text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-2">
+            <div className="p-3">
               {Object.entries(navigationGroups).map(([key, group]) => (
                 <div key={key} className="mb-4">
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
+                  <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
                     <group.icon className="w-4 h-4" />
                     {group.label}
                   </div>
@@ -912,10 +923,10 @@ const DeploymentManagementSystem = () => {
                         setCurrentPage(item.id);
                         setMobileMenuOpen(false);
                       }}
-                      className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors rounded-lg ${
+                      className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-all duration-200 rounded-lg mb-1 ${
                         currentPage === item.id
-                          ? 'bg-red-100 text-red-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'bg-primary text-white font-semibold shadow-sm'
+                          : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
                       }`}
                     >
                       <item.icon className="w-5 h-5" />
@@ -932,14 +943,16 @@ const DeploymentManagementSystem = () => {
       {/* Error Display */}
       {uiError && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-4 flex items-center justify-between shadow-sm animate-slide-down">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <span className="text-red-800">{uiError}</span>
+              <div className="bg-destructive/20 p-2 rounded-full">
+                <AlertCircle className="w-5 h-5 text-destructive" />
+              </div>
+              <span className="text-destructive font-medium">{uiError}</span>
             </div>
             <button
               onClick={() => setUiError('')}
-              className="text-red-600 hover:text-red-800"
+              className="text-destructive hover:bg-destructive/10 p-2 rounded-lg transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
