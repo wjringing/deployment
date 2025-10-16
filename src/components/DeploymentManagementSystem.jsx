@@ -23,6 +23,7 @@ import BreakSchedulerPage from './BreakSchedulerPage';
 import LaborSalesCalculatorPage from './LaborSalesCalculatorPage';
 import PerformanceScorecardPage from './PerformanceScorecardPage';
 import AutoAssignmentRulesPage from './AutoAssignmentRulesPage';
+import PositionRelationshipsManager from './PositionRelationshipsManager';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
 import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown } from 'lucide-react';
 
@@ -789,6 +790,7 @@ const DeploymentManagementSystem = () => {
       items: [
         { id: 'training', label: 'Training & Ranking', icon: Award },
         { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
+        { id: 'position-relationships', label: 'Position Relationships', icon: MapPin },
         { id: 'rule-management', label: 'Rule Management', icon: Shield },
         { id: 'auto-rules', label: 'Auto-Assignment', icon: Settings }
       ]
@@ -1031,6 +1033,10 @@ const DeploymentManagementSystem = () => {
 
         {currentPage === 'station-mapping' && (
           <StationPositionMappingPage />
+        )}
+
+        {currentPage === 'position-relationships' && (
+          <PositionRelationshipsManager />
         )}
 
         {currentPage === 'rule-management' && (

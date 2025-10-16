@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, RefreshCw, Link2, Shield } from 'lucide-react';
+import { Plus, Trash2, Save, RefreshCw, Link2, Shield, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const PositionRelationshipsManager = () => {
   const [positions, setPositions] = useState([]);
   const [secondaryMappings, setSecondaryMappings] = useState([]);
   const [closingRequirements, setClosingRequirements] = useState([]);
+  const [closingPositionMappings, setClosingPositionMappings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('secondary');
 
@@ -23,6 +24,13 @@ const PositionRelationshipsManager = () => {
     shift_type: 'Night Shift',
     minimum_trained_staff: 1,
     closing_start_time: '22:00'
+  });
+
+  const [newClosingPosMapping, setNewClosingPosMapping] = useState({
+    cleaning_area_position_id: '',
+    deployable_position_id: '',
+    priority: 1,
+    shift_type: 'Night Shift'
   });
 
   useEffect(() => {
@@ -55,9 +63,19 @@ const PositionRelationshipsManager = () => {
         `)
         .order('closing_start_time');
 
+      const { data: closingPosMappingsData } = await supabase
+        .from('closing_position_config')
+        .select(`
+          *,
+          cleaning_area:cleaning_area_position_id (id, name, type),
+          deployable:deployable_position_id (id, name, type)
+        `)
+        .order('priority');
+
       setPositions(positionsData || []);
       setSecondaryMappings(mappingsData || []);
       setClosingRequirements(closingData || []);
+      setClosingPositionMappings(closingPosMappingsData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -193,8 +211,71 @@ const PositionRelationshipsManager = () => {
     }
   }
 
+  async function addClosingPositionMapping() {
+    try {
+      if (!newClosingPosMapping.cleaning_area_position_id || !newClosingPosMapping.deployable_position_id) {
+        alert('Please select both cleaning area and deployable positions');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('closing_position_config')
+        .insert({
+          cleaning_area_position_id: newClosingPosMapping.cleaning_area_position_id,
+          deployable_position_id: newClosingPosMapping.deployable_position_id,
+          priority: newClosingPosMapping.priority,
+          shift_type: newClosingPosMapping.shift_type,
+          is_active: true
+        });
+
+      if (error) throw error;
+
+      setNewClosingPosMapping({
+        cleaning_area_position_id: '',
+        deployable_position_id: '',
+        priority: 1,
+        shift_type: 'Night Shift'
+      });
+
+      await loadData();
+    } catch (error) {
+      console.error('Error adding closing position mapping:', error);
+      alert('Error adding mapping: ' + error.message);
+    }
+  }
+
+  async function removeClosingPositionMapping(id) {
+    try {
+      const { error } = await supabase
+        .from('closing_position_config')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      await loadData();
+    } catch (error) {
+      console.error('Error removing closing position mapping:', error);
+      alert('Error removing mapping: ' + error.message);
+    }
+  }
+
+  async function toggleClosingPosMappingActive(id, currentValue) {
+    try {
+      const { error } = await supabase
+        .from('closing_position_config')
+        .update({ is_active: !currentValue })
+        .eq('id', id);
+
+      if (error) throw error;
+      await loadData();
+    } catch (error) {
+      console.error('Error toggling closing position mapping:', error);
+    }
+  }
+
   const primaryPositions = positions.filter(p => p.type === 'position');
   const secondaryPositions = positions.filter(p => p.type === 'position' || p.type === 'pack_position');
+  const cleaningAreaPositions = positions.filter(p => p.type === 'cleaning_area');
 
   if (loading) {
     return (
@@ -235,10 +316,21 @@ const PositionRelationshipsManager = () => {
             <Shield className="w-4 h-4" />
             Closing Requirements
           </button>
+          <button
+            onClick={() => setActiveTab('closing-mappings')}
+            className={`${
+              activeTab === 'closing-mappings'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+          >
+            <MapPin className="w-4 h-4" />
+            Closing Position Mappings
+          </button>
         </nav>
       </div>
 
-      {activeTab === 'secondary' ? (
+      {activeTab === 'secondary' && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Secondary Position Mappings</h3>
           <p className="text-sm text-gray-600 mb-6">
@@ -356,7 +448,9 @@ const PositionRelationshipsManager = () => {
             ))}
           </div>
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'closing' && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Closing Station Requirements</h3>
           <p className="text-sm text-gray-600 mb-6">
@@ -453,6 +547,123 @@ const PositionRelationshipsManager = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'closing-mappings' && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Closing Position Mappings</h3>
+          <p className="text-sm text-gray-600 mb-6">
+            Map cleaning area positions to deployable positions for closing duty assignments.
+            When staff are trained in a cleaning area, they can be assigned to the corresponding closing position.
+          </p>
+
+          <div className="mb-6 p-4 bg-green-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-3">Add New Closing Position Mapping</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <select
+                value={newClosingPosMapping.cleaning_area_position_id}
+                onChange={(e) => setNewClosingPosMapping({ ...newClosingPosMapping, cleaning_area_position_id: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">Cleaning Area Position</option>
+                {cleaningAreaPositions.map(pos => (
+                  <option key={pos.id} value={pos.id}>{pos.name}</option>
+                ))}
+              </select>
+
+              <select
+                value={newClosingPosMapping.deployable_position_id}
+                onChange={(e) => setNewClosingPosMapping({ ...newClosingPosMapping, deployable_position_id: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">Deployable Position</option>
+                {primaryPositions.map(pos => (
+                  <option key={pos.id} value={pos.id}>{pos.name}</option>
+                ))}
+              </select>
+
+              <input
+                type="number"
+                min="1"
+                value={newClosingPosMapping.priority}
+                onChange={(e) => setNewClosingPosMapping({ ...newClosingPosMapping, priority: parseInt(e.target.value) || 1 })}
+                placeholder="Priority"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              />
+
+              <button
+                onClick={addClosingPositionMapping}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
+            </div>
+
+            <div className="mt-3">
+              <select
+                value={newClosingPosMapping.shift_type}
+                onChange={(e) => setNewClosingPosMapping({ ...newClosingPosMapping, shift_type: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              >
+                <option value="Night Shift">Night Shift</option>
+                <option value="Day Shift">Day Shift</option>
+                <option value="Both">Both Shifts</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {closingPositionMappings.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <MapPin className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>No closing position mappings configured yet.</p>
+                <p className="text-sm mt-1">Add mappings above to enable closing position auto-assignment.</p>
+              </div>
+            ) : (
+              closingPositionMappings.map((mapping) => (
+                <div key={mapping.id} className={`flex items-center justify-between p-3 rounded-lg ${
+                  mapping.is_active ? 'bg-gray-50' : 'bg-gray-100 opacity-60'
+                }`}>
+                  <div className="flex items-center gap-4 flex-1">
+                    <MapPin className={`w-4 h-4 ${mapping.is_active ? 'text-green-600' : 'text-gray-400'}`} />
+                    <span className="font-medium text-gray-900">
+                      {mapping.cleaning_area?.name || 'Unknown'}
+                    </span>
+                    <span className="text-gray-400">→</span>
+                    <span className="font-medium text-green-600">
+                      {mapping.deployable?.name || 'Unknown'}
+                    </span>
+                    <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
+                      Priority: {mapping.priority}
+                    </span>
+                    <span className="text-xs text-gray-500 bg-blue-100 px-2 py-1 rounded">
+                      {mapping.shift_type}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleClosingPosMappingActive(mapping.id, mapping.is_active)}
+                      className={`px-3 py-1 rounded text-xs font-medium ${
+                        mapping.is_active
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {mapping.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                    <button
+                      onClick={() => removeClosingPositionMapping(mapping.id)}
+                      className="text-red-600 hover:text-red-800 p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
