@@ -11,7 +11,6 @@ import { LogIn, UserPlus } from 'lucide-react';
 export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -47,25 +46,14 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast.success('Account created! Please check your email to verify your account.');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        toast.success('Logged in successfully!');
-      }
+      toast.success('Logged in successfully!');
     } catch (error) {
       toast.error(error.message || 'Authentication failed');
     } finally {
@@ -75,15 +63,13 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            {isSignUp ? 'Create an account' : 'Welcome back'}
+            Welcome back
           </CardTitle>
           <CardDescription className="text-center">
-            {isSignUp
-              ? 'Enter your email and password to create your account'
-              : 'Enter your email and password to sign in'}
+            Enter your email and password to sign in
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,11 +106,6 @@ export default function Auth() {
             >
               {loading ? (
                 'Loading...'
-              ) : isSignUp ? (
-                <>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Sign Up
-                </>
               ) : (
                 <>
                   <LogIn className="w-4 h-4 mr-2" />
@@ -134,17 +115,8 @@ export default function Auth() {
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-primary hover:underline"
-              disabled={loading}
-            >
-              {isSignUp
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Sign up"}
-            </button>
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            <p>Contact your administrator to create an account</p>
           </div>
         </CardContent>
       </Card>
