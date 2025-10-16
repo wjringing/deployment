@@ -4,6 +4,12 @@ import { LocationProvider } from './contexts/LocationContext';
 import Auth from './pages/Auth';
 import ProtectedRoute from './components/ProtectedRoute';
 import DeploymentManagementSystem from './components/DeploymentManagementSystem';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
+import UserManagement from './components/UserManagement';
+import LocationManagement from './components/LocationManagement';
+import LocationOnboardingWizard from './components/LocationOnboardingWizard';
+import RegionalManagement from './components/RegionalManagement';
+import AuditLogViewer from './components/AuditLogViewer';
 
 function App() {
   return (
@@ -11,6 +17,54 @@ function App() {
       <LocationProvider>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute>
+                <SuperAdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute>
+                <UserManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/locations"
+            element={
+              <ProtectedRoute>
+                <LocationManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/onboarding"
+            element={
+              <ProtectedRoute>
+                <LocationOnboardingWizard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/regions"
+            element={
+              <ProtectedRoute>
+                <RegionalManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <ProtectedRoute>
+                <AuditLogViewer />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/*"
             element={

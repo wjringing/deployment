@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { AccessControlManager } from '../utils/accessControl';
 import GDPRComplianceManager from '../utils/gdprCompliance';
@@ -27,9 +29,13 @@ import PositionRelationshipsManager from './PositionRelationshipsManager';
 import TrainingDevelopmentPage from './TrainingDevelopmentPage';
 import FixedClosingPositionsPage from './FixedClosingPositionsPage';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown, BookOpen, Building2, LayoutDashboard, UserCog } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const isSuperAdmin = profile?.role === 'super_admin';
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
@@ -764,7 +770,7 @@ const DeploymentManagementSystem = () => {
     );
   }
 
-  const navigationGroups = {
+  const baseNavigationGroups = {
     operations: {
       label: 'Operations',
       icon: Users,
@@ -817,6 +823,25 @@ const DeploymentManagementSystem = () => {
     }
   };
 
+  const superAdminNavigationGroup = {
+    superadmin: {
+      label: 'System Admin',
+      icon: UserCog,
+      isLink: true,
+      items: [
+        { id: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, isLink: true },
+        { id: '/admin/users', label: 'User Management', icon: UserCog, isLink: true },
+        { id: '/admin/locations', label: 'Locations', icon: Building2, isLink: true },
+        { id: '/admin/regions', label: 'Regions', icon: MapPin, isLink: true },
+        { id: '/admin/audit', label: 'Audit Logs', icon: FileText, isLink: true }
+      ]
+    }
+  };
+
+  const navigationGroups = isSuperAdmin
+    ? { ...baseNavigationGroups, ...superAdminNavigationGroup }
+    : baseNavigationGroups;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -868,7 +893,11 @@ const DeploymentManagementSystem = () => {
                           <button
                             key={item.id}
                             onClick={() => {
-                              setCurrentPage(item.id);
+                              if (item.isLink) {
+                                navigate(item.id);
+                              } else {
+                                setCurrentPage(item.id);
+                              }
                               setOpenDropdown(null);
                             }}
                             className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-all duration-200 ${
