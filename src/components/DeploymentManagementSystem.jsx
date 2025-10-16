@@ -33,8 +33,8 @@ import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, Trendin
 
 const DeploymentManagementSystem = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
-  const isSuperAdmin = profile?.role === 'super_admin';
+  const { user, userProfile, isSuperAdmin } = useAuth();
+  const isSuperAdminUser = isSuperAdmin();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -838,7 +838,7 @@ const DeploymentManagementSystem = () => {
     }
   };
 
-  const navigationGroups = isSuperAdmin
+  const navigationGroups = isSuperAdminUser
     ? { ...baseNavigationGroups, ...superAdminNavigationGroup }
     : baseNavigationGroups;
 
@@ -949,7 +949,11 @@ const DeploymentManagementSystem = () => {
                     <button
                       key={item.id}
                       onClick={() => {
-                        setCurrentPage(item.id);
+                        if (item.isLink) {
+                          navigate(item.id);
+                        } else {
+                          setCurrentPage(item.id);
+                        }
                         setMobileMenuOpen(false);
                       }}
                       className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-all duration-200 rounded-lg mb-1 ${
