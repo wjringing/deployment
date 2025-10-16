@@ -5,7 +5,7 @@ import {
   Users, Plus, Edit2, Trash2, Shield, MapPin, Mail, Phone,
   Search, Filter, ChevronDown, X, Check, AlertCircle
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 
 const UserManagement = () => {
   const { isSuperAdmin } = useAuth();

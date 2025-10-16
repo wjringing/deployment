@@ -4,7 +4,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import { Link, Trash2, Plus, Save, RefreshCw, MapPin, Edit } from 'lucide-react';
 
 export default function StationPositionMappingPage() {

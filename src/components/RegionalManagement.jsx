@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MapPin, Plus, Edit2, Trash2, X, Building2, Users, BarChart3 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 
 export default function RegionalManagement() {
   const [regions, setRegions] = useState([]);

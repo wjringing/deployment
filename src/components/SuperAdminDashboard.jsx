@@ -5,7 +5,7 @@ import {
   Building2, Users, MapPin, TrendingUp, Activity, Shield,
   ChevronRight, AlertCircle, CheckCircle, Clock, Plus
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 
 const SuperAdminDashboard = ({ onNavigateToUsers, onNavigateToLocations, onNavigateToOnboarding }) => {
   const { isSuperAdmin } = useAuth();

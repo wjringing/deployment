@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Building2, Plus, Edit2, Trash2, X, Check, MapPin, Search, AlertCircle, Users, Briefcase, Calendar } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 
 export default function LocationManagement() {
   const [locations, setLocations] = useState([]);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Building2, ChevronRight, ChevronLeft, Check, MapPin, Settings, User, Package, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import { useNavigate } from 'react-router-dom';
 
 export default function LocationOnboardingWizard() {

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import Papa from 'papaparse';
 import {
   Upload, Download, RefreshCw, Shield, Star, LogOut, User, Filter

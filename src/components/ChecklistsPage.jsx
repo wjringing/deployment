@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import {
   Plus, Trash2, Save, CheckCircle, Circle, Download, Calendar,
   Clock, AlertCircle, FileText, Edit2, Copy, Printer, CheckSquare, X

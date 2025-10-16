@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import {
   Coffee, Clock, CheckCircle, AlertTriangle, Users, Calendar, Plus, X, Zap
 } from 'lucide-react';

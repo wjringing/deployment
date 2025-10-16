@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import {
   MapPin, Users, Clock, AlertTriangle, RefreshCw, Coffee,
   ChefHat, Store, UserCheck, X, CheckCircle, Navigation

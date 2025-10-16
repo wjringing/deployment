@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { FileText, Search, Filter, Download, Calendar, User, Activity } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 
 export default function AuditLogViewer() {
   const [logs, setLogs] = useState([]);
