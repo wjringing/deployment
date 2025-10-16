@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+@media print {
+  body { margin: 0; }
+  .page-break { page-break-before: always; }
+}
+
+/* Custom Scrollbar Styles */
+@layer utilities {
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full hover:bg-gray-400;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-corner {
+    @apply bg-gray-100;
+  }
+  
+  /* Firefox */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(209 213 219) rgb(243 244 246);
+  }
+  
+  /* Smooth scrolling behavior */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+  
+  /* Focus styles for keyboard navigation */
+  .scrollable-container:focus {
+    outline: 2px solid rgb(59 130 246);
+    outline-offset: -2px;
+  }
+}
+
+/* Drag and drop compatibility with scrolling */
+.dragging {
+  user-select: none;
+}
+
+.dragging * {
+  pointer-events: none;
+}
+
+.dragging .scrollable-container {
+  pointer-events: auto;
+}
+
+/* Responsive scrolling adjustments */
+@media (max-width: 768px) {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-600;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-gray-200;
+  }
+}
