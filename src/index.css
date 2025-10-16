@@ -171,6 +171,59 @@
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
   }
+
+  /* Background Colors */
+  .bg-primary { background-color: hsl(var(--primary)); }
+  .bg-primary-hover { background-color: hsl(var(--primary-hover)); }
+  .bg-primary-light { background-color: hsl(var(--primary-light)); }
+  .bg-success { background-color: hsl(var(--success)); }
+  .bg-warning { background-color: hsl(var(--warning)); }
+  .bg-info { background-color: hsl(var(--info)); }
+  .bg-destructive { background-color: hsl(var(--destructive)); }
+  .bg-secondary { background-color: hsl(var(--secondary)); }
+  .bg-background { background-color: hsl(var(--background)); }
+  .bg-muted { background-color: hsl(var(--muted)); }
+
+  /* Text Colors */
+  .text-primary { color: hsl(var(--primary)); }
+  .text-success { color: hsl(var(--success)); }
+  .text-warning { color: hsl(var(--warning)); }
+  .text-info { color: hsl(var(--info)); }
+  .text-destructive { color: hsl(var(--destructive)); }
+  .text-secondary { color: hsl(var(--secondary)); }
+  .text-foreground { color: hsl(var(--foreground)); }
+  .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+
+  /* Border Colors */
+  .border-primary { border-color: hsl(var(--primary)); }
+  .border-success { border-color: hsl(var(--success)); }
+  .border-warning { border-color: hsl(var(--warning)); }
+  .border-info { border-color: hsl(var(--info)); }
+  .border-destructive { border-color: hsl(var(--destructive)); }
+
+  /* Hover States */
+  .hover\\:bg-primary-hover:hover { background-color: hsl(var(--primary-hover)); }
+  .hover\\:bg-primary:hover { background-color: hsl(var(--primary)); }
+  .hover\\:bg-success\\/90:hover { background-color: hsl(var(--success) / 0.9); }
+  .hover\\:bg-warning\\/90:hover { background-color: hsl(var(--warning) / 0.9); }
+  .hover\\:bg-info\\/90:hover { background-color: hsl(var(--info) / 0.9); }
+  .hover\\:bg-destructive\\/90:hover { background-color: hsl(var(--destructive) / 0.9); }
+
+  /* Ring Colors */
+  .focus\\:ring-primary:focus { --tw-ring-color: hsl(var(--primary)); }
+  .focus\\:border-primary:focus { border-color: hsl(var(--primary)); }
+
+  /* Opacity Variants */
+  .bg-primary\\/10 { background-color: hsl(var(--primary) / 0.1); }
+  .bg-primary\\/20 { background-color: hsl(var(--primary) / 0.2); }
+  .bg-destructive\\/10 { background-color: hsl(var(--destructive) / 0.1); }
+  .bg-destructive\\/20 { background-color: hsl(var(--destructive) / 0.2); }
+  .bg-warning\\/10 { background-color: hsl(var(--warning) / 0.1); }
+  .bg-warning\\/30 { background-color: hsl(var(--warning) / 0.3); }
+
+  .border-destructive\\/20 { border-color: hsl(var(--destructive) / 0.2); }
+  .border-destructive\\/30 { border-color: hsl(var(--destructive) / 0.3); }
+  .border-warning\\/30 { border-color: hsl(var(--warning) / 0.3); }
 }
 
 /* Custom Scrollbar Styles */
