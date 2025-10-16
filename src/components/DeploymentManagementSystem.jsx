@@ -24,8 +24,10 @@ import LaborSalesCalculatorPage from './LaborSalesCalculatorPage';
 import PerformanceScorecardPage from './PerformanceScorecardPage';
 import AutoAssignmentRulesPage from './AutoAssignmentRulesPage';
 import PositionRelationshipsManager from './PositionRelationshipsManager';
+import TrainingDevelopmentPage from './TrainingDevelopmentPage';
+import FixedClosingPositionsPage from './FixedClosingPositionsPage';
 import { DefaultTargetsManager } from '../utils/defaultTargets';
-import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown, BookOpen } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
   const handleLogout = async () => {
@@ -789,8 +791,10 @@ const DeploymentManagementSystem = () => {
       icon: Award,
       items: [
         { id: 'training', label: 'Training & Ranking', icon: Award },
+        { id: 'training-development', label: 'Training Development', icon: BookOpen },
         { id: 'station-mapping', label: 'Station Mapping', icon: LinkIcon },
         { id: 'position-relationships', label: 'Position Relationships', icon: MapPin },
+        { id: 'fixed-closing', label: 'Fixed Closing Positions', icon: Shield },
         { id: 'rule-management', label: 'Rule Management', icon: Shield },
         { id: 'auto-rules', label: 'Auto-Assignment', icon: Settings }
       ]
@@ -1037,6 +1041,14 @@ const DeploymentManagementSystem = () => {
 
         {currentPage === 'position-relationships' && (
           <PositionRelationshipsManager />
+        )}
+
+        {currentPage === 'training-development' && (
+          <TrainingDevelopmentPage />
+        )}
+
+        {currentPage === 'fixed-closing' && (
+          <FixedClosingPositionsPage />
         )}
 
         {currentPage === 'rule-management' && (

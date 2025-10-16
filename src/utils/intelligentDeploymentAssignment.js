@@ -752,6 +752,29 @@ async function findSecondaryPosition(staffId, primaryPositionName, date, shiftTy
  */
 async function findClosingPosition(staffId, date, shiftType) {
   try {
+    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+
+    const { data: fixedClosing, error: fixedError } = await supabase
+      .from('staff_fixed_closing_positions')
+      .select(`
+        position:position_id (
+          id,
+          name
+        ),
+        shift_type,
+        day_of_week
+      `)
+      .eq('staff_id', staffId)
+      .eq('is_active', true)
+      .or(`shift_type.eq.${shiftType},shift_type.eq.Both`)
+      .or(`day_of_week.eq.${dayOfWeek},day_of_week.is.null`)
+      .order('priority', { ascending: true })
+      .limit(1);
+
+    if (!fixedError && fixedClosing && fixedClosing.length > 0 && fixedClosing[0].position) {
+      return fixedClosing[0].position.name;
+    }
+
     const { data: closingTraining, error: trainingError } = await supabase
       .from('staff_closing_training')
       .select(`
