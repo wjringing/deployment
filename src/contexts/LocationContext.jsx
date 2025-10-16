@@ -18,7 +18,14 @@ export const LocationProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userProfile && userLocations.length > 0) {
+    if (!userProfile) {
+      setLoading(false);
+      setAvailableLocations([]);
+      setCurrentLocation(null);
+      return;
+    }
+
+    if (userLocations.length > 0) {
       const locations = userLocations.map(loc => loc.locations).filter(Boolean);
       setAvailableLocations(locations);
 
@@ -37,7 +44,9 @@ export const LocationProvider = ({ children }) => {
       }
 
       setLoading(false);
-    } else if (userProfile && userLocations.length === 0 && !isSuperAdmin()) {
+    } else {
+      setAvailableLocations([]);
+      setCurrentLocation(null);
       setLoading(false);
     }
   }, [userProfile, userLocations]);
