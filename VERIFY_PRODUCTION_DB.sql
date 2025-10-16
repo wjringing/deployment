@@ -60,8 +60,7 @@ ORDER BY ordinal_position;
 -- Step 7: Check which migrations have been applied
 SELECT
   version,
-  name,
-  inserted_at
+  name
 FROM supabase_migrations.schema_migrations
 ORDER BY version DESC
 LIMIT 10;
