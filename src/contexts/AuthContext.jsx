@@ -21,17 +21,21 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        console.log('[AUTH] Initializing authentication...');
         const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log('[AUTH] Session retrieved:', currentSession ? 'Yes' : 'No');
 
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
+          console.log('[AUTH] Loading profile for user:', currentSession.user.id);
           await loadUserProfile(currentSession.user.id);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('[AUTH] Error initializing auth:', error);
       } finally {
+        console.log('[AUTH] Setting loading to false');
         setLoading(false);
       }
     };
@@ -40,6 +44,7 @@ export const AuthProvider = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        console.log('[AUTH] Auth state changed:', _event);
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -61,23 +66,33 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (userId) => {
     try {
+      console.log('[AUTH] Loading profile for user:', userId);
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (profileError) throw profileError;
+      console.log('[AUTH] Profile result:', { profile: !!profile, error: profileError });
+
+      if (profileError) {
+        console.error('[AUTH] Profile error:', profileError);
+        return;
+      }
 
       if (profile) {
+        console.log('[AUTH] Profile found, role:', profile.role);
         setUserProfile(profile);
 
-        await supabase
+        supabase
           .from('user_profiles')
           .update({ last_login: new Date().toISOString() })
-          .eq('id', userId);
+          .eq('id', userId)
+          .then(() => console.log('[AUTH] Last login updated'))
+          .catch(err => console.error('[AUTH] Last login update failed:', err));
 
         if (profile.role !== 'super_admin') {
+          console.log('[AUTH] Loading locations for non-super-admin');
           const { data: locations, error: locationsError } = await supabase
             .from('user_location_access')
             .select(`
@@ -93,16 +108,29 @@ export const AuthProvider = ({ children }) => {
             `)
             .eq('user_id', userId);
 
-          if (locationsError) throw locationsError;
+          console.log('[AUTH] Locations result:', { count: locations?.length, error: locationsError });
+
+          if (locationsError) {
+            console.error('[AUTH] Locations error:', locationsError);
+            setUserLocations([]);
+            return;
+          }
 
           setUserLocations(locations || []);
         } else {
+          console.log('[AUTH] Loading all locations for super admin');
           const { data: allLocations, error: allLocationsError } = await supabase
             .from('locations')
             .select('*')
             .eq('status', 'active');
 
-          if (allLocationsError) throw allLocationsError;
+          console.log('[AUTH] All locations result:', { count: allLocations?.length, error: allLocationsError });
+
+          if (allLocationsError) {
+            console.error('[AUTH] All locations error:', allLocationsError);
+            setUserLocations([]);
+            return;
+          }
 
           const formattedLocations = (allLocations || []).map(loc => ({
             location_id: loc.id,
@@ -113,9 +141,12 @@ export const AuthProvider = ({ children }) => {
 
           setUserLocations(formattedLocations);
         }
+        console.log('[AUTH] Profile loading complete');
+      } else {
+        console.warn('[AUTH] No profile found for user:', userId);
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('[AUTH] Error loading user profile:', error);
     }
   };
 

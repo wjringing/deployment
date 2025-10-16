@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Auth</title>
+</head>
+<body>
+    <h1>Authentication Debug</h1>
+    <div id="output"></div>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const output = document.getElementById('output');
+
+        async function debugAuth() {
+            output.innerHTML = '<p>Checking session...</p>';
+
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            output.innerHTML += `<h2>Session:</h2><pre>${JSON.stringify(session, null, 2)}</pre>`;
+
+            if (session?.user) {
+                output.innerHTML += `<p>User ID: ${session.user.id}</p>`;
+
+                const { data: profile, error: profileError } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                output.innerHTML += `<h2>Profile:</h2><pre>${JSON.stringify({ profile, profileError }, null, 2)}</pre>`;
+
+                if (profile && profile.role !== 'super_admin') {
+                    const { data: locations, error: locationsError } = await supabase
+                        .from('user_location_access')
+                        .select(`
+                            location_id,
+                            role,
+                            is_primary,
+                            locations (
+                                id,
+                                location_code,
+                                location_name,
+                                status
+                            )
+                        `)
+                        .eq('user_id', session.user.id);
+
+                    output.innerHTML += `<h2>Locations:</h2><pre>${JSON.stringify({ locations, locationsError }, null, 2)}</pre>`;
+                }
+            } else {
+                output.innerHTML += '<p>No active session</p>';
+            }
+        }
+
+        debugAuth();
+    </script>
+</body>
+</html>
