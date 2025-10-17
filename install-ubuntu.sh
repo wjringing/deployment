@@ -367,15 +367,45 @@ log_step "Step 7: Installing Application Dependencies"
 
 cd $APP_DIR
 
+# Test npm registry connectivity
+log_info "Testing npm registry connectivity..."
+if timeout 10 curl -s https://registry.npmjs.org/ > /dev/null 2>&1; then
+    log_success "npm registry is accessible"
+else
+    log_warning "npm registry may be slow or unreachable"
+    log_info "Installation may take longer than usual"
+fi
+
 log_info "Installing npm packages..."
 log_info "This may take several minutes..."
 
-sudo -u $APP_USER npm install --production=false
+# Configure npm for better reliability
+sudo -u $APP_USER npm config set fetch-retry-maxtimeout 60000
+sudo -u $APP_USER npm config set fetch-retry-mintimeout 10000
+sudo -u $APP_USER npm config set fetch-timeout 300000
+sudo -u $APP_USER npm config set maxsockets 5
 
-if [ $? -eq 0 ]; then
+# Run npm install with timeout (15 minutes)
+timeout 900 sudo -u $APP_USER npm install --production=false --prefer-offline --no-audit --loglevel=verbose 2>&1 | tee /tmp/npm-install.log
+
+NPM_EXIT_CODE=${PIPESTATUS[0]}
+
+if [ $NPM_EXIT_CODE -eq 124 ]; then
+    log_error "npm install timed out after 15 minutes"
+    log_info "Last 50 lines of output:"
+    tail -50 /tmp/npm-install.log
+    exit 1
+elif [ $NPM_EXIT_CODE -eq 0 ]; then
     log_success "Dependencies installed successfully"
 else
-    log_error "Failed to install dependencies"
+    log_error "Failed to install dependencies (exit code: $NPM_EXIT_CODE)"
+    log_info "Last 50 lines of output:"
+    tail -50 /tmp/npm-install.log
+    log_info ""
+    log_info "Troubleshooting:"
+    log_info "1. Check your internet connection"
+    log_info "2. Try running: cd $APP_DIR && sudo -u $APP_USER npm install"
+    log_info "3. Check npm registry: curl https://registry.npmjs.org/"
     exit 1
 fi
 
