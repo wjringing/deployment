@@ -32,29 +32,43 @@ export default function Auth() {
 
   const handleAuth = async (e) => {
     e.preventDefault();
+    console.log('[AUTH PAGE] Form submitted', { email, passwordLength: password?.length });
 
     if (!email || !password) {
+      console.log('[AUTH PAGE] Missing credentials');
       toast.error('Please fill in all fields');
       return;
     }
 
     if (password.length < 6) {
+      console.log('[AUTH PAGE] Password too short');
       toast.error('Password must be at least 6 characters');
       return;
     }
 
+    console.log('[AUTH PAGE] Attempting sign in...');
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('[AUTH PAGE] Calling supabase.auth.signInWithPassword');
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+      });
+
+      console.log('[AUTH PAGE] Sign in response:', {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        error: error?.message
       });
 
       if (error) throw error;
 
       toast.success('Logged in successfully!');
+      console.log('[AUTH PAGE] Login successful, waiting for redirect...');
     } catch (error) {
+      console.error('[AUTH PAGE] Login error:', error);
       toast.error(error.message || 'Authentication failed');
     } finally {
       setLoading(false);
