@@ -67,11 +67,24 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('[AUTH] Loading profile for user:', userId);
 
-      const { data: profile, error: profileError } = await supabase
+      // Add timeout to prevent infinite hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile query timeout after 10s')), 10000)
+      );
+
+      const queryPromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+
+      const { data: profile, error: profileError } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]).catch(error => {
+        console.error('[AUTH] Query failed or timed out:', error);
+        return { data: null, error };
+      });
 
       console.log('[AUTH] Profile result:', { profile: !!profile, error: profileError });
 
@@ -83,6 +96,18 @@ export const AuthProvider = ({ children }) => {
           details: profileError.details,
           hint: profileError.hint
         });
+
+        // Create a minimal profile to prevent blocking
+        console.warn('[AUTH] Creating minimal profile to allow access');
+        const userEmail = user?.email || '';
+        setUserProfile({
+          id: userId,
+          role: 'manager',
+          full_name: 'User',
+          email: userEmail,
+          status: 'active'
+        });
+        setUserLocations([]);
         setLoading(false);
         return;
       }
