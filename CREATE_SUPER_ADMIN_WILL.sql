@@ -29,7 +29,7 @@ INSERT INTO user_profiles (
   updated_at
 )
 VALUES (
-  'USER_ID_FROM_STEP_1'::uuid,  -- Replace with actual user ID from Step 1
+  '9618e32a-a6bc-4d3c-9760-da558aa9f75f'::uuid,  -- Replace with actual user ID from Step 1
   'will@w-j-lander.uk',
   'Will Lander',
   '',
