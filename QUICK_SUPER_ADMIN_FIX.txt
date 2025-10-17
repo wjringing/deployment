@@ -1,0 +1,62 @@
+================================================================================
+QUICK FIX: Session Timeout & Super Admin Access
+================================================================================
+
+PROBLEM 1: Session timeout errors in console
+SOLUTION: Fixed in UserContext.jsx (removed 5-second timeout)
+
+PROBLEM 2: Can't access Super Admin Portal
+SOLUTION: Add yourself to super_admins table
+
+================================================================================
+STEPS TO GET SUPER ADMIN ACCESS
+================================================================================
+
+1. Go to your Supabase Dashboard
+   → https://supabase.com/dashboard/project/YOUR_PROJECT/sql
+
+2. Run this SQL (replace YOUR-EMAIL with your login email):
+
+   INSERT INTO super_admins (user_id, email)
+   SELECT id, email
+   FROM auth.users
+   WHERE email = 'YOUR-EMAIL@example.com'
+   ON CONFLICT (user_id) DO NOTHING;
+
+3. Refresh your browser (Ctrl+Shift+R)
+
+4. You should now see "Super Admin Portal" in the navigation
+
+================================================================================
+VERIFY IT WORKED
+================================================================================
+
+In Supabase SQL Editor, run:
+
+SELECT * FROM super_admins;
+
+You should see your email in the results.
+
+In browser console (F12), after login you should see:
+
+Super admin check: { id: 1, user_id: "...", email: "your-email" }
+
+================================================================================
+QUICK CHECKS
+================================================================================
+
+✓ Session errors fixed - Removed timeout from UserContext.jsx
+✓ Build successful - npm run build completed
+✓ SQL script ready - add_super_admin.sql
+✓ Documentation ready - SUPER_ADMIN_SETUP.md
+
+================================================================================
+FILES TO READ
+================================================================================
+
+Quick Start:  QUICK_SUPER_ADMIN_FIX.txt (this file)
+Full Guide:   SUPER_ADMIN_SETUP.md
+SQL Script:   add_super_admin.sql
+Tech Details: SESSION_FIX_SUMMARY.md
+
+================================================================================

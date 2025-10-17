@@ -36,18 +36,7 @@ export function UserProvider({ children }) {
       setLoading(true);
       console.log('Loading user data...');
 
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Session timeout')), 5000)
-      );
-
-      const { data: { session }, error: sessionError } = await Promise.race([
-        sessionPromise,
-        timeoutPromise
-      ]).catch(err => {
-        console.error('Session fetch failed:', err);
-        return { data: { session: null }, error: err };
-      });
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) {
         console.error('Session error:', sessionError);
