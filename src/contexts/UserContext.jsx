@@ -13,9 +13,24 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUserData();
+    let mounted = true;
+
+    async function initAuth() {
+      try {
+        await loadUserData();
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
       if (event === 'SIGNED_IN' && session) {
         await loadUserData();
       } else if (event === 'SIGNED_OUT') {
@@ -25,10 +40,14 @@ export function UserProvider({ children }) {
         setUserPermissions([]);
         setIsSuperAdmin(false);
         setSelectedLocation(null);
+        setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function loadUserData() {
@@ -45,7 +64,7 @@ export function UserProvider({ children }) {
       }
 
       if (!session?.user) {
-        console.log('No active session, redirecting to auth');
+        console.log('No active session found');
         setLoading(false);
         return;
       }
@@ -141,9 +160,13 @@ export function UserProvider({ children }) {
         .update({ last_login: new Date().toISOString() })
         .eq('id', session.user.id);
 
+      console.log('User data loaded successfully');
+
     } catch (error) {
       console.error('Error loading user data:', error);
+      console.error('Error stack:', error.stack);
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
     }
   }
