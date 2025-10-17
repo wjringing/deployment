@@ -362,40 +362,36 @@ const CreateUserModal = ({ locations, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true
-      });
+      // Get current session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('You must be logged in to create users');
+      }
 
-      if (authError) throw authError;
+      // Call Edge Function to create user server-side
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`;
 
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: authData.user.id,
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           email: formData.email,
+          password: formData.password,
           full_name: formData.full_name,
           phone: formData.phone,
           role: formData.role,
-          status: 'active'
-        });
+          selectedLocations: formData.selectedLocations,
+          primaryLocation: formData.primaryLocation
+        })
+      });
 
-      if (profileError) throw profileError;
+      const result = await response.json();
 
-      if (formData.role !== 'super_admin') {
-        const locationAccess = formData.selectedLocations.map(locId => ({
-          user_id: authData.user.id,
-          location_id: locId,
-          role: formData.role,
-          is_primary: locId === formData.primaryLocation
-        }));
-
-        const { error: accessError } = await supabase
-          .from('user_location_access')
-          .insert(locationAccess);
-
-        if (accessError) throw accessError;
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create user');
       }
 
       toast.success('User created successfully');
