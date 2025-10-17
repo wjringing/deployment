@@ -17,10 +17,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    flowType: 'pkce',
   },
   global: {
     headers: {
       'X-Client-Info': 'deployment-management-system'
     }
+  },
+  db: {
+    schema: 'public'
   }
 })
+
+console.log('Supabase client initialized');

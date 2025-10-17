@@ -55,13 +55,26 @@ export function UserProvider({ children }) {
       setLoading(true);
       console.log('Loading user data...');
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Session fetch timeout after 10s')), 10000)
+      );
+
+      const { data: { session }, error: sessionError } = await Promise.race([
+        sessionPromise,
+        timeoutPromise
+      ]).catch(error => {
+        console.error('Session fetch failed:', error);
+        return { data: { session: null }, error };
+      });
 
       if (sessionError) {
         console.error('Session error:', sessionError);
         setLoading(false);
         return;
       }
+
+      console.log('Session data received:', session ? 'Session exists' : 'No session');
 
       if (!session?.user) {
         console.log('No active session found');

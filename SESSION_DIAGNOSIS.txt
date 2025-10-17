@@ -1,0 +1,160 @@
+================================================================================
+SESSION LOADING DIAGNOSIS - Updated Fix
+================================================================================
+
+CURRENT ISSUE: "Loading user data..." appears 3 times but never progresses
+
+NEW DIAGNOSTICS ADDED:
+- 10-second timeout for session fetch (prevents infinite hanging)
+- Console log: "Session data received" to confirm fetch completes
+- Console log: "Supabase client initialized" to confirm setup
+- Better error catching and reporting
+
+================================================================================
+AFTER CLEARING CACHE, YOU SHOULD SEE:
+================================================================================
+
+1. Supabase URL: https://rkrjicdfsbgxkuubdykz.supabase.co
+2. Supabase Key exists: true
+3. Supabase client initialized ← NEW
+4. Loading user data...
+5. Loading user data... (appears 2-3 times - normal)
+6. Session data received: Session exists OR No session ← NEW
+7. EITHER:
+   - "No active session found" → Need to log in
+   - "User authenticated: your-email@example.com" → Proceeding to load data
+
+================================================================================
+WHAT TO DO NOW:
+================================================================================
+
+STEP 1: Clear Browser Cache (CRITICAL)
+---------------------------------------
+The new code with timeout protection needs to load.
+
+Method A - Hard Refresh:
+  Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+
+Method B - Clear Site Data:
+  1. Press F12 to open DevTools
+  2. Go to "Application" tab
+  3. Click "Clear storage" in left sidebar
+  4. Click "Clear site data" button
+  5. Close DevTools
+  6. Refresh page (F5)
+
+Method C - Incognito Window (to test):
+  1. Open incognito/private window
+  2. Navigate to your site
+  3. Check console for new diagnostic messages
+
+STEP 2: Check Console Output
+-----------------------------
+After clearing cache, look for the NEW messages:
+- "Supabase client initialized"
+- "Session data received: [status]"
+
+If you see "Session fetch timeout after 10s":
+  → This means Supabase API is not responding
+  → Check if your Supabase project is paused
+  → Go to: https://supabase.com/dashboard/projects
+  → Verify your project is active
+
+If you see "Session data received: No session":
+  → App is working! You just need to log in
+  → Navigate to /auth
+  → Use: will@w-j-lander.uk
+
+If you see "Session data received: Session exists":
+  → You're logged in! Check next message for admin status
+  → Should see: "User authenticated: will@w-j-lander.uk"
+  → Then: "Super admin check: {...}"
+
+STEP 3: If Still Stuck on Infinite Loading
+-------------------------------------------
+After clearing cache, if you STILL see only "Loading user data..." 
+repeated without "Supabase client initialized":
+
+  → Your browser is STILL loading old JavaScript
+  → Try these in order:
+    1. Close ALL browser tabs/windows
+    2. Reopen browser
+    3. Go to site
+    4. If still old code, try different browser
+    5. Check if ServiceWorker is stuck (see below)
+
+================================================================================
+SERVICE WORKER ISSUE:
+================================================================================
+
+Your console shows:
+  "TypeError: Cannot navigate to URL: https://...-credentialless.webcontainer..."
+
+This suggests you're on StackBlitz/WebContainer preview environment.
+
+For WebContainer/StackBlitz:
+1. Click the refresh button in the preview panel
+2. Or open in a new browser tab (button top-right of preview)
+3. ServiceWorker errors are usually harmless in dev environment
+
+For Production Server:
+1. Make sure you deploy the NEW dist/ folder
+2. Clear any service workers:
+   - DevTools → Application → Service Workers → Unregister
+3. Hard refresh
+
+================================================================================
+NEW BUILD INFO:
+================================================================================
+
+Latest build hash: index-alxmVdWp.js
+Built: Just now (10.57s)
+
+Old hashes (don't load these):
+- index-DMWIcLrM.js
+- index-O7ocWtEz.js  
+- index-BhmUp30W.js
+
+Check DevTools → Network tab:
+- Should load: index-alxmVdWp.js
+- If loading old hash → Cache not cleared
+
+================================================================================
+TROUBLESHOOTING CHECKLIST:
+================================================================================
+
+□ Cleared browser cache (hard refresh)
+□ Opened DevTools console (F12)
+□ See "Supabase client initialized"
+□ See "Session data received: [status]"
+□ No "Session fetch timeout" error
+□ Loading spinner disappears within 2 seconds
+
+If ALL checked above:
+  ✓ App is working correctly
+  ✓ If showing login page → Log in
+  ✓ If showing main app → Check for Super Admin Portal in nav
+
+If ANY unchecked:
+  → Share console output for specific help
+  → Include ALL messages from page load
+  → Check Supabase dashboard for project status
+
+================================================================================
+EXPECTED FULL CONSOLE OUTPUT (After Fix):
+================================================================================
+
+Supabase URL: https://rkrjicdfsbgxkuubdykz.supabase.co
+Supabase Key exists: true
+Supabase client initialized
+Loading user data...
+Loading user data...
+Session data received: Session exists
+User authenticated: will@w-j-lander.uk
+Super admin check: {id: "...", full_name: "Will Lander", ...}
+User data loaded successfully
+Setting loading to false
+
+Then you should see the main app with Super Admin Portal in navigation.
+
+================================================================================
