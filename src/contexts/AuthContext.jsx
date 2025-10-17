@@ -53,9 +53,8 @@ export const AuthProvider = ({ children }) => {
         } else {
           setUserProfile(null);
           setUserLocations([]);
+          setLoading(false);
         }
-
-        setLoading(false);
       }
     );
 
@@ -84,6 +83,7 @@ export const AuthProvider = ({ children }) => {
           details: profileError.details,
           hint: profileError.hint
         });
+        setLoading(false);
         return;
       }
 
@@ -120,6 +120,7 @@ export const AuthProvider = ({ children }) => {
           if (locationsError) {
             console.error('[AUTH] Locations error:', locationsError);
             setUserLocations([]);
+            setLoading(false);
             return;
           }
 
@@ -136,6 +137,7 @@ export const AuthProvider = ({ children }) => {
           if (allLocationsError) {
             console.error('[AUTH] All locations error:', allLocationsError);
             setUserLocations([]);
+            setLoading(false);
             return;
           }
 
@@ -149,11 +151,14 @@ export const AuthProvider = ({ children }) => {
           setUserLocations(formattedLocations);
         }
         console.log('[AUTH] Profile loading complete');
+        setLoading(false);
       } else {
         console.warn('[AUTH] No profile found for user:', userId);
+        setLoading(false);
       }
     } catch (error) {
       console.error('[AUTH] Error loading user profile:', error);
+      setLoading(false);
     }
   };
 
