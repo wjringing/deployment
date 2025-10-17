@@ -1,36 +1,97 @@
 ================================================================================
-QUICK FIX FOR YOUR UBUNTU SERVER
+QUICK FIX - Session Timeout & Super Admin Access
 ================================================================================
 
-YOUR PROBLEM: npm trying to connect to localhost:9092 (proxy misconfiguration)
+ISSUE: Old cached JavaScript causing "Session timeout" errors
 
-QUICK FIX (Copy and paste these commands on your server):
---------------------------------------------------------------------------------
+SOLUTION: Clear browser cache to load new code
+
+================================================================================
+STEP-BY-STEP FIX (Choose ONE method):
+================================================================================
+
+METHOD 1: Hard Refresh (Fastest)
+---------------------------------
+1. Press Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (Mac)
+2. Wait for page to fully reload
+3. Log in again if needed
+
+METHOD 2: Clear Site Data (Most Thorough)
+------------------------------------------
+1. Open DevTools: Press F12
+2. Go to "Application" tab
+3. Click "Clear storage" in left sidebar
+4. Click "Clear site data" button
+5. Close DevTools
+6. Refresh page (F5)
+7. Log in again
+
+METHOD 3: Incognito Window (Quick Test)
+----------------------------------------
+1. Open incognito/private window
+2. Navigate to your site
+3. Log in
+4. Check if Super Admin Portal appears
+
+================================================================================
+WHAT YOU SHOULD SEE AFTER FIX:
+================================================================================
+
+In Browser Console (F12 → Console):
+✓ Supabase URL: https://rkrjicdfsbgxkuubdykz.supabase.co
+✓ Supabase Key exists: true
+✓ Loading user data... (appears 2-3 times - this is NORMAL)
+✓ User authenticated: will@w-j-lander.uk
+✓ Super admin check: {full_name: "Will Lander", email: "will@w-j-lander.uk", ...}
+
+In Navigation Menu:
+✓ "Super Admin Portal" link should appear
+
+NO MORE:
+✗ Session timeout errors
+✗ "Access Denied" in Super Admin Portal
+
+================================================================================
+DATABASE STATUS (Already Fixed):
+================================================================================
+
+Your super admin record is correctly configured:
+- User ID: 68ec9e02-12d7-4558-9c3e-83746caa635d
+- Email: will@w-j-lander.uk
+- Full Name: Will Lander
+- Status: Active super admin
+
+Function test passed: is_super_admin() returns TRUE for your account
+
+================================================================================
+CODE STATUS (Already Fixed):
+================================================================================
+
+✓ Session timeout removed from UserContext.jsx
+✓ Supabase client configured correctly in lib/supabase.js
+✓ .npmrc fixed to use correct registry
+✓ Fresh build completed with new hashes:
+  - Old: index-BhmUp30W.js (cached in your browser)
+  - New: index-O7ocWtEz.js (needs to load)
+
+================================================================================
+IF STILL NOT WORKING:
+================================================================================
+
+1. Try all three methods above in order
+2. Make sure you're logged in with: will@w-j-lander.uk
+3. Check console for specific error messages
+4. Verify Supabase project is not paused (check dashboard)
+
+================================================================================
+FOR UBUNTU SERVER:
+================================================================================
+
+If deploying to Ubuntu server, run:
 
 cd /var/www/deployment-app
+sudo ./fix-npm-and-deploy.sh
 
-sudo -u deployapp npm config delete proxy 2>/dev/null
-sudo -u deployapp npm config delete https-proxy 2>/dev/null
-sudo -u deployapp npm config set registry https://registry.npmjs.org/
-
-sudo bash fix-permissions.sh
-
-================================================================================
-
-WHAT THIS DOES:
-1. Removes the broken npm proxy configuration
-2. Sets npm to use the official registry
-3. Fixes permissions
-4. Reinstalls dependencies correctly
-5. Builds the application
-6. Configures nginx
-7. Restarts everything
-
-EXPECTED RESULT:
-✅ Installation Fixed Successfully!
-✅ Your site should be live
-
-IF IT STILL FAILS:
-See UBUNTU_INSTALL_TROUBLESHOOTING.md for detailed manual steps
+Or see: UBUNTU_NPM_FIX.md
 
 ================================================================================
