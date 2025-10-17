@@ -24,12 +24,13 @@ ORDER BY created_at;
 -- Step 3: Add a user as super admin (replace 'your-email@example.com' with your actual email)
 -- IMPORTANT: Replace 'your-email@example.com' with your login email
 
-INSERT INTO super_admins (user_id, email)
+INSERT INTO super_admins (user_id, full_name, email)
 SELECT
-  id,
-  email
-FROM auth.users
-WHERE email = 'your-email@example.com'
+  u.id,
+  u.full_name,
+  u.email
+FROM users u
+WHERE u.email = 'your-email@example.com'
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Step 4: Verify the user was added
@@ -42,9 +43,10 @@ FROM super_admins sa
 WHERE sa.email = 'your-email@example.com';
 
 -- Alternative: Add super admin by user_id if you know it
--- INSERT INTO super_admins (user_id, email)
+-- INSERT INTO super_admins (user_id, full_name, email)
 -- VALUES (
 --   'your-user-id-here',
+--   'Your Full Name',
 --   'your-email@example.com'
 -- )
 -- ON CONFLICT (user_id) DO NOTHING;

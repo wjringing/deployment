@@ -17,10 +17,10 @@ STEPS TO GET SUPER ADMIN ACCESS
 
 2. Run this SQL (replace YOUR-EMAIL with your login email):
 
-   INSERT INTO super_admins (user_id, email)
-   SELECT id, email
-   FROM auth.users
-   WHERE email = 'YOUR-EMAIL@example.com'
+   INSERT INTO super_admins (user_id, full_name, email)
+   SELECT u.id, u.full_name, u.email
+   FROM users u
+   WHERE u.email = 'YOUR-EMAIL@example.com'
    ON CONFLICT (user_id) DO NOTHING;
 
 3. Refresh your browser (Ctrl+Shift+R)
