@@ -12,14 +12,14 @@ export default function LocationManagement() {
   const [editingLocation, setEditingLocation] = useState(null);
   const [formData, setFormData] = useState({
     location_code: '',
-    location_name: '',
+    name: '',
     address: '',
     city: '',
     postcode: '',
     region: '',
     area: '',
     timezone: 'Europe/London',
-    status: 'onboarding',
+    active: true,
     target_labor_percentage: 15.0,
     max_staff_per_shift: 20
   });
@@ -39,7 +39,7 @@ export default function LocationManagement() {
           staff(count),
           deployments(count)
         `)
-        .order('location_name');
+        .order('name', { ascending: true });
 
       if (error) throw error;
       setLocations(data || []);
@@ -85,14 +85,14 @@ export default function LocationManagement() {
     setEditingLocation(location);
     setFormData({
       location_code: location.location_code || '',
-      location_name: location.location_name || '',
+      name: location.name || '',
       address: location.address || '',
       city: location.city || '',
       postcode: location.postcode || '',
       region: location.region || '',
       area: location.area || '',
       timezone: location.timezone || 'Europe/London',
-      status: location.status || 'onboarding',
+      active: location.active !== undefined ? location.active : true,
       target_labor_percentage: location.target_labor_percentage || 15.0,
       max_staff_per_shift: location.max_staff_per_shift || 20
     });
@@ -123,7 +123,7 @@ export default function LocationManagement() {
     try {
       const { error } = await supabase
         .from('locations')
-        .update({ status: newStatus })
+        .update({ active: newStatus })
         .eq('id', locationId);
 
       if (error) throw error;
@@ -138,14 +138,14 @@ export default function LocationManagement() {
   const resetForm = () => {
     setFormData({
       location_code: '',
-      location_name: '',
+      name: '',
       address: '',
       city: '',
       postcode: '',
       region: '',
       area: '',
       timezone: 'Europe/London',
-      status: 'onboarding',
+      active: true,
       target_labor_percentage: 15.0,
       max_staff_per_shift: 20
     });
@@ -153,23 +153,26 @@ export default function LocationManagement() {
 
   const filteredLocations = locations.filter(loc => {
     const matchesSearch =
-      loc.location_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loc.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loc.location_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loc.city?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || loc.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'active' && loc.active === true) ||
+      (statusFilter === 'inactive' && loc.active === false);
 
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      active: 'bg-success/10 text-success border-success/20',
-      onboarding: 'bg-warning/10 text-warning border-warning/20',
-      inactive: 'bg-gray-100 text-gray-600 border-gray-200'
-    };
-    return styles[status] || styles.inactive;
+  const getStatusBadge = (active) => {
+    if (active) {
+      return 'bg-success/10 text-success border-success/20';
+    } else {
+      return 'bg-gray-100 text-gray-600 border-gray-200';
+    }
   };
+
+  const getStatusText = (active) => active ? 'Active' : 'Inactive';
 
   if (loading) {
     return (
@@ -248,10 +251,10 @@ export default function LocationManagement() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-lg font-bold text-gray-900">
-                        {location.location_name}
+                        {location.name}
                       </h3>
-                      <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getStatusBadge(location.status)}`}>
-                        {location.status}
+                      <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getStatusBadge(location.active)}`}>
+                        {getStatusText(location.active)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 font-medium">Code: {location.location_code}</p>
@@ -323,15 +326,15 @@ export default function LocationManagement() {
 
                 <div className="flex gap-2 mt-4">
                   <button
-                    onClick={() => handleStatusChange(location.id, 'active')}
-                    disabled={location.status === 'active'}
+                    onClick={() => handleStatusChange(location.id, true)}
+                    disabled={location.active === true}
                     className="flex-1 px-3 py-2 text-xs font-semibold bg-success/10 text-success hover:bg-success/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
                   >
                     Activate
                   </button>
                   <button
-                    onClick={() => handleStatusChange(location.id, 'inactive')}
-                    disabled={location.status === 'inactive'}
+                    onClick={() => handleStatusChange(location.id, false)}
+                    disabled={location.active === false}
                     className="flex-1 px-3 py-2 text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
                   >
                     Deactivate
@@ -385,8 +388,8 @@ export default function LocationManagement() {
                   <input
                     type="text"
                     required
-                    value={formData.location_name}
-                    onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                     placeholder="e.g., KFC Manchester"
                   />
@@ -466,11 +469,10 @@ export default function LocationManagement() {
                     Status
                   </label>
                   <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    value={formData.active ? 'active' : 'inactive'}
+                    onChange={(e) => setFormData({ ...formData, active: e.target.value === 'active' })}
                     className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                   >
-                    <option value="onboarding">Onboarding</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>

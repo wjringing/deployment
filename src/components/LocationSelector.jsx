@@ -14,7 +14,7 @@ const LocationSelector = () => {
         <Store className="w-5 h-5 text-red-600" />
         <div>
           <div className="text-sm font-medium text-gray-900">
-            {currentLocation?.location_name || 'No Location'}
+            {currentLocation?.name || 'No Location'}
           </div>
           {currentLocation?.location_code && (
             <div className="text-xs text-gray-500">
@@ -40,7 +40,7 @@ const LocationSelector = () => {
         <Store className="w-5 h-5 text-red-600 flex-shrink-0" />
         <div className="flex-1 text-left">
           <div className="text-sm font-medium text-gray-900">
-            {currentLocation.location_name}
+            {currentLocation.name}
           </div>
           <div className="text-xs text-gray-500">
             {currentLocation.location_code && `Code: ${currentLocation.location_code}`}
@@ -76,7 +76,7 @@ const LocationSelector = () => {
                     <MapPin className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-red-600' : 'text-gray-400'}`} />
                     <div className="flex-1 text-left">
                       <div className={`text-sm font-medium ${isSelected ? 'text-red-900' : 'text-gray-900'}`}>
-                        {location.location_name}
+                        {location.name}
                       </div>
                       <div className="text-xs text-gray-500">
                         {location.location_code && `Code: ${location.location_code}`}

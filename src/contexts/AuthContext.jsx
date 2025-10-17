@@ -116,13 +116,6 @@ export const AuthProvider = ({ children }) => {
         console.log('[AUTH] Profile found, role:', profile.role);
         setUserProfile(profile);
 
-        supabase
-          .from('user_profiles')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', userId)
-          .then(() => console.log('[AUTH] Last login updated'))
-          .catch(err => console.error('[AUTH] Last login update failed:', err));
-
         if (profile.role !== 'super_admin') {
           console.log('[AUTH] Loading locations for non-super-admin');
           const { data: locations, error: locationsError } = await supabase
@@ -134,8 +127,8 @@ export const AuthProvider = ({ children }) => {
               locations (
                 id,
                 location_code,
-                location_name,
-                status
+                name,
+                active
               )
             `)
             .eq('user_id', userId);
@@ -155,7 +148,7 @@ export const AuthProvider = ({ children }) => {
           const { data: allLocations, error: allLocationsError } = await supabase
             .from('locations')
             .select('*')
-            .eq('status', 'active');
+            .eq('active', true);
 
           console.log('[AUTH] All locations result:', { count: allLocations?.length, error: allLocationsError });
 

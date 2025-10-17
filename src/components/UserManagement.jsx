@@ -38,11 +38,11 @@ const UserManagement = () => {
             locations (
               id,
               location_code,
-              location_name
+              name
             )
           )
         `).order('created_at', { ascending: false }),
-        supabase.from('locations').select('*').eq('status', 'active')
+        supabase.from('locations').select('*').eq('active', true)
       ]);
 
       if (usersRes.error) {
