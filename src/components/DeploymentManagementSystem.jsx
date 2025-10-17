@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import { useUser } from '../contexts/UserContext';
 import { AccessControlManager } from '../utils/accessControl';
 import GDPRComplianceManager from '../utils/gdprCompliance';
 import GDPRPrivacyCenter from './GDPRPrivacyCenter';
@@ -30,6 +31,9 @@ import { DefaultTargetsManager } from '../utils/defaultTargets';
 import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown, BookOpen } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
+  const { isSuperAdmin, selectedLocation, userLocations, switchLocation, hasPermission } = useUser();
+  const [showLocationSwitcher, setShowLocationSwitcher] = useState(false);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
@@ -825,7 +829,9 @@ const DeploymentManagementSystem = () => {
               </button>
               <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <DragDropIcon className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
-                <span className="hidden sm:inline">KFC Deployment</span>
+                <span className="hidden sm:inline">
+                  {selectedLocation?.location_name || 'KFC Deployment'}
+                </span>
               </h1>
               {isDragging && (
                 <div className="hidden md:block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
@@ -835,6 +841,52 @@ const DeploymentManagementSystem = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              {userLocations.length > 1 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowLocationSwitcher(!showLocationSwitcher)}
+                    className="px-3 py-2 rounded-lg hover:bg-gray-100 flex items-center gap-2 text-sm"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    <span className="hidden md:inline">Switch Location</span>
+                  </button>
+                  {showLocationSwitcher && (
+                    <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border min-w-[250px] py-1 z-50">
+                      {userLocations.map(location => (
+                        <button
+                          key={location.id}
+                          onClick={() => {
+                            switchLocation(location);
+                            setShowLocationSwitcher(false);
+                          }}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-50 ${
+                            selectedLocation?.id === location.id ? 'bg-blue-50 text-blue-700 font-medium' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Store className="w-4 h-4" />
+                            <div>
+                              <div className="text-sm">{location.location_name}</div>
+                              <div className="text-xs text-gray-500">{location.location_code}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isSuperAdmin && (
+                <a
+                  href="/admin"
+                  className="px-3 py-2 rounded-lg hover:bg-gray-100 flex items-center gap-2 text-sm"
+                  title="Super Admin Portal"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden md:inline">Admin</span>
+                </a>
+              )}
               {/* Desktop Navigation */}
               <nav className="hidden lg:flex items-center gap-1">
                 {Object.entries(navigationGroups).map(([key, group]) => (
