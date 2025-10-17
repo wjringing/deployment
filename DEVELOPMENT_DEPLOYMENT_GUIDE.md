@@ -30,7 +30,7 @@ SSH into your server and run the setup script:
 ```bash
 # Download or copy the setup script
 cd /tmp
-wget https://your-repo/deployment/setup-dev-environment.sh
+wget https://your-repo/deployment/
 # Or upload it via scp
 
 # Make it executable
@@ -66,7 +66,7 @@ Then SSH into the server and build:
 ssh user@yourserver
 
 # Switch to dev user
-sudo su - deployapp-dev
+  
 
 # Navigate to app directory
 cd /home/deployapp-dev/app
