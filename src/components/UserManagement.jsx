@@ -28,21 +28,10 @@ const UserManagement = () => {
     try {
       setLoading(true);
 
-      const [usersRes, locationsRes] = await Promise.all([
-        supabase.from('user_profiles').select(`
-          *,
-          user_location_access (
-            location_id,
-            role,
-            is_primary,
-            locations (
-              id,
-              location_code,
-              name
-            )
-          )
-        `).order('created_at', { ascending: false }),
-        supabase.from('locations').select('*').eq('active', true)
+      const [usersRes, locationsRes, userAccessRes] = await Promise.all([
+        supabase.from('user_profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('locations').select('*').eq('active', true),
+        supabase.from('user_location_access').select('*')
       ]);
 
       if (usersRes.error) {
@@ -53,8 +42,18 @@ const UserManagement = () => {
         console.error('Locations query error:', locationsRes.error);
         throw locationsRes.error;
       }
+      if (userAccessRes.error) {
+        console.error('User access query error:', userAccessRes.error);
+        throw userAccessRes.error;
+      }
 
-      setUsers(usersRes.data || []);
+      // Attach location access to each user
+      const usersWithAccess = (usersRes.data || []).map(user => ({
+        ...user,
+        user_location_access: (userAccessRes.data || []).filter(access => access.user_id === user.id)
+      }));
+
+      setUsers(usersWithAccess);
       setLocations(locationsRes.data || []);
     } catch (error) {
       console.error('Error loading users:', error);

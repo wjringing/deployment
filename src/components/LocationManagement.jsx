@@ -33,12 +33,7 @@ export default function LocationManagement() {
       setLoading(true);
       const { data, error } = await supabase
         .from('locations')
-        .select(`
-          *,
-          user_location_access(count),
-          staff(count),
-          deployments(count)
-        `)
+        .select('*')
         .order('name', { ascending: true });
 
       if (error) throw error;
