@@ -34,21 +34,36 @@ export function UserProvider({ children }) {
   async function loadUserData() {
     try {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Loading user data...');
 
-      if (!session?.user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('Session error:', sessionError);
         setLoading(false);
         return;
       }
 
+      if (!session?.user) {
+        console.log('No active session');
+        setLoading(false);
+        return;
+      }
+
+      console.log('User authenticated:', session.user.email);
       setCurrentUser(session.user);
 
-      const { data: superAdminCheck } = await supabase
+      const { data: superAdminCheck, error: superAdminError } = await supabase
         .from('super_admins')
         .select('*')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
+      if (superAdminError) {
+        console.error('Error checking super admin status:', superAdminError);
+      }
+
+      console.log('Super admin check:', superAdminCheck);
       setIsSuperAdmin(!!superAdminCheck);
 
       const { data: profile } = await supabase
