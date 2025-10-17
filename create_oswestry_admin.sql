@@ -1,16 +1,34 @@
 /*
-  Create Location Admin for Oswestry
+  Create Location Admin for Oswestry - TEMPORARY WORKAROUND
 
-  INSTRUCTIONS:
-  1. This user must FIRST sign up through the UI at https://your-app.com/auth
-  2. After they sign up, get their user ID from auth.users table
-  3. Run this script with their actual user_id
+  This is a temporary solution until you deploy the Edge Function.
+  Once the Edge Function is deployed (see DEPLOY_EDGE_FUNCTION.md),
+  you can create users from the UI.
 
-  IMPORTANT: Replace these values before running:
+  TWO OPTIONS:
+
+  OPTION 1 - User already signed up through UI:
+  ==============================================
+  1. User already created account at /auth page
+  2. Find their user ID by running:
+     SELECT id, email FROM auth.users WHERE email = 'their@email.com';
+  3. Replace 'USER_ID_HERE' below with their actual UUID
+  4. Run the INSERT statements below
+
+  OPTION 2 - Create user directly via Supabase Dashboard:
+  ========================================================
+  1. Go to https://supabase.com/dashboard/project/evxrwggutczvmyoutrmm/auth
+  2. Click "Add User" > "Create new user"
+  3. Enter email and password, enable "Auto Confirm User"
+  4. Copy the new user's ID
+  5. Replace 'USER_ID_HERE' below with that UUID
+  6. Run the INSERT statements below in SQL Editor
+
+  IMPORTANT: Replace these placeholder values:
   - 'USER_ID_HERE' with the actual UUID from auth.users
   - 'admin@oswestry.kfc.com' with their actual email
-  - 'John Smith' with their actual name
-  - '07700900000' with their actual phone
+  - 'John Smith' with their actual full name
+  - '07700900000' with their phone (optional, can be NULL)
 */
 
 -- First, verify the Oswestry location exists
