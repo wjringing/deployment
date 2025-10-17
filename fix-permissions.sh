@@ -67,10 +67,22 @@ chmod -R u+w $APP_DIR
 
 log_success "Ownership fixed"
 
-# Step 2: Clean npm cache for the user
-log_info "Step 2: Cleaning npm cache..."
+# Step 2: Fix npm configuration and clean cache
+log_info "Step 2: Fixing npm configuration..."
+
+# Remove any proxy settings that might be misconfigured
+sudo -u $APP_USER npm config delete proxy 2>/dev/null || true
+sudo -u $APP_USER npm config delete https-proxy 2>/dev/null || true
+sudo -u $APP_USER npm config delete http-proxy 2>/dev/null || true
+
+# Set registry to official npm
+sudo -u $APP_USER npm config set registry https://registry.npmjs.org/
+
+# Clean npm cache
+log_info "Cleaning npm cache..."
 sudo -u $APP_USER npm cache clean --force
-log_success "Cache cleaned"
+
+log_success "npm configuration fixed and cache cleaned"
 
 # Step 3: Install dependencies
 log_info "Step 3: Installing dependencies..."

@@ -367,6 +367,17 @@ log_step "Step 7: Installing Application Dependencies"
 
 cd $APP_DIR
 
+# Fix npm configuration
+log_info "Configuring npm..."
+
+# Remove any proxy settings that might be misconfigured
+sudo -u $APP_USER npm config delete proxy 2>/dev/null || true
+sudo -u $APP_USER npm config delete https-proxy 2>/dev/null || true
+sudo -u $APP_USER npm config delete http-proxy 2>/dev/null || true
+
+# Set registry to official npm
+sudo -u $APP_USER npm config set registry https://registry.npmjs.org/
+
 # Test npm registry connectivity
 log_info "Testing npm registry connectivity..."
 if timeout 10 curl -s https://registry.npmjs.org/ > /dev/null 2>&1; then

@@ -1,0 +1,36 @@
+================================================================================
+QUICK FIX FOR YOUR UBUNTU SERVER
+================================================================================
+
+YOUR PROBLEM: npm trying to connect to localhost:9092 (proxy misconfiguration)
+
+QUICK FIX (Copy and paste these commands on your server):
+--------------------------------------------------------------------------------
+
+cd /var/www/deployment-app
+
+sudo -u deployapp npm config delete proxy 2>/dev/null
+sudo -u deployapp npm config delete https-proxy 2>/dev/null
+sudo -u deployapp npm config set registry https://registry.npmjs.org/
+
+sudo bash fix-permissions.sh
+
+================================================================================
+
+WHAT THIS DOES:
+1. Removes the broken npm proxy configuration
+2. Sets npm to use the official registry
+3. Fixes permissions
+4. Reinstalls dependencies correctly
+5. Builds the application
+6. Configures nginx
+7. Restarts everything
+
+EXPECTED RESULT:
+✅ Installation Fixed Successfully!
+✅ Your site should be live
+
+IF IT STILL FAILS:
+See UBUNTU_INSTALL_TROUBLESHOOTING.md for detailed manual steps
+
+================================================================================
