@@ -35,7 +35,7 @@ export default function LocationManagement() {
         .from('locations')
         .select(`
           *,
-          user_locations(count),
+          user_location_access(count),
           staff(count),
           deployments(count)
         `)

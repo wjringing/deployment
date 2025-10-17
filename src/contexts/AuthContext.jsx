@@ -113,10 +113,10 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (profile) {
-        console.log('[AUTH] Profile found, role:', profile.role);
+        console.log('[AUTH] Profile found, role:', profile.role, 'is_super_admin:', profile.is_super_admin);
         setUserProfile(profile);
 
-        if (profile.role !== 'super_admin') {
+        if (!profile.is_super_admin) {
           console.log('[AUTH] Loading locations for non-super-admin');
           const { data: locations, error: locationsError } = await supabase
             .from('user_location_access')
@@ -266,7 +266,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isSuperAdmin = () => {
-    return userProfile?.role === 'super_admin' && userProfile?.status === 'active';
+    return userProfile?.is_super_admin === true && userProfile?.status === 'active';
   };
 
   const isLocationAdmin = (locationId = null) => {

@@ -31,12 +31,11 @@ const SuperAdminDashboard = ({ onNavigateToUsers, onNavigateToLocations, onNavig
     try {
       setLoading(true);
 
-      const [locationsRes, usersRes, staffRes, deploymentsRes, auditRes] = await Promise.all([
+      const [locationsRes, usersRes, staffRes, deploymentsRes] = await Promise.all([
         supabase.from('locations').select('*'),
         supabase.from('user_profiles').select('id'),
         supabase.from('staff').select('id'),
-        supabase.from('deployments').select('id'),
-        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(10)
+        supabase.from('deployments').select('id')
       ]);
 
       if (locationsRes.error) throw locationsRes.error;
@@ -49,14 +48,14 @@ const SuperAdminDashboard = ({ onNavigateToUsers, onNavigateToLocations, onNavig
 
       setStats({
         totalLocations: locationData.length,
-        activeLocations: locationData.filter(l => l.status === 'active').length,
-        onboardingLocations: locationData.filter(l => l.status === 'onboarding').length,
+        activeLocations: locationData.filter(l => l.active === true).length,
+        onboardingLocations: 0,
         totalUsers: usersRes.data?.length || 0,
         totalStaff: staffRes.data?.length || 0,
         totalDeployments: deploymentsRes.data?.length || 0
       });
 
-      setRecentActivity(auditRes.data || []);
+      setRecentActivity([]);
     } catch (error) {
       console.error('Error loading dashboard:', error);
       toast.error('Failed to load dashboard data');
