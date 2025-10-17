@@ -68,22 +68,22 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('[AUTH] Loading profile for user:', userId);
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile query timeout after 5s')), 5000)
-      );
-
-      const queryPromise = supabase
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      const { data: profile, error: profileError } = await Promise.race([queryPromise, timeoutPromise]);
-
       console.log('[AUTH] Profile result:', { profile: !!profile, error: profileError });
 
       if (profileError) {
         console.error('[AUTH] Profile error:', profileError);
+        console.error('[AUTH] Profile error details:', {
+          message: profileError.message,
+          code: profileError.code,
+          details: profileError.details,
+          hint: profileError.hint
+        });
         return;
       }
 

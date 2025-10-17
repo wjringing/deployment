@@ -428,10 +428,10 @@ const DeploymentPage = ({
               className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
             >
               <option value="">Select Position</option>
-              {Object.entries(positionCategories).map(([key, category]) => (
-                <optgroup key={key} label={category.name}>
-                  {category.positions.map(position => (
-                    <option key={position} value={position}>{position}</option>
+              {Object.entries(positionCategories).map(([key, category], index) => (
+                <optgroup key={`${key}-${index}`} label={category.name}>
+                  {category.positions.map((position, pIndex) => (
+                    <option key={`${position}-${pIndex}`} value={position}>{position}</option>
                   ))}
                 </optgroup>
               ))}
@@ -446,10 +446,10 @@ const DeploymentPage = ({
               className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
             >
               <option value="">Select Secondary</option>
-              {Object.entries(positionCategories).map(([key, category]) => (
-                <optgroup key={key} label={category.name}>
-                  {category.positions.map(position => (
-                    <option key={position} value={position}>{position}</option>
+              {Object.entries(positionCategories).map(([key, category], index) => (
+                <optgroup key={`secondary-${key}-${index}`} label={category.name}>
+                  {category.positions.map((position, pIndex) => (
+                    <option key={`secondary-${position}-${pIndex}`} value={position}>{position}</option>
                   ))}
                 </optgroup>
               ))}

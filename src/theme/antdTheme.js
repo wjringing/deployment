@@ -9,7 +9,15 @@ export const antdTheme = {
     colorInfo: '#3B82F6',
 
     // Typography
-    fontSize: 14,
+    fontSize: 16,
+    fontSizeSM: 14,
+    fontSizeLG: 18,
+    fontSizeXL: 20,
+    fontSizeHeading1: 36,
+    fontSizeHeading2: 28,
+    fontSizeHeading3: 24,
+    fontSizeHeading4: 20,
+    fontSizeHeading5: 18,
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 
     // Border radius
@@ -22,9 +30,9 @@ export const antdTheme = {
     colorBgContainer: '#FFFFFF',
 
     // Component specific
-    controlHeight: 36,
-    controlHeightLG: 42,
-    controlHeightSM: 28,
+    controlHeight: 40,
+    controlHeightLG: 48,
+    controlHeightSM: 32,
 
     // Shadows
     boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
@@ -57,9 +65,12 @@ export const antdTheme = {
       defaultColor: '#374151',
       dangerColor: '#EF4444',
       borderRadius: 8,
-      controlHeight: 36,
-      controlHeightLG: 42,
-      controlHeightSM: 28,
+      controlHeight: 40,
+      controlHeightLG: 48,
+      controlHeightSM: 32,
+      fontSize: 16,
+      fontSizeLG: 18,
+      fontSizeSM: 14,
     },
     Card: {
       borderRadiusLG: 12,
@@ -73,13 +84,15 @@ export const antdTheme = {
     },
     Input: {
       borderRadius: 8,
-      controlHeight: 36,
+      controlHeight: 40,
+      fontSize: 16,
       colorBorder: '#D1D5DB',
       colorPrimaryHover: '#DC2626',
     },
     Select: {
       borderRadius: 8,
-      controlHeight: 36,
+      controlHeight: 40,
+      fontSize: 16,
       colorBorder: '#D1D5DB',
       colorPrimaryHover: '#DC2626',
     },

@@ -45,14 +45,26 @@ const UserManagement = () => {
         supabase.from('locations').select('*').eq('status', 'active')
       ]);
 
-      if (usersRes.error) throw usersRes.error;
-      if (locationsRes.error) throw locationsRes.error;
+      if (usersRes.error) {
+        console.error('Users query error:', usersRes.error);
+        throw usersRes.error;
+      }
+      if (locationsRes.error) {
+        console.error('Locations query error:', locationsRes.error);
+        throw locationsRes.error;
+      }
 
       setUsers(usersRes.data || []);
       setLocations(locationsRes.data || []);
     } catch (error) {
       console.error('Error loading users:', error);
-      toast.error('Failed to load users');
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
