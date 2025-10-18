@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useUser } from '../contexts/UserContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Save, CheckCircle, Circle, Download, Calendar,
-  Clock, AlertCircle, FileText, Edit2, Copy, Printer, CheckSquare, X
+  Clock, AlertCircle, FileText, Edit2, Copy, Printer, CheckSquare, X, MapPin
 } from 'lucide-react';
 
 export default function ChecklistsPage() {
+  const { selectedLocation, userRole, isSuperAdmin } = useUser();
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [templateItems, setTemplateItems] = useState([]);
@@ -23,6 +25,7 @@ export default function ChecklistsPage() {
     name: '',
     checklist_type: 'opening',
     area: 'Kitchen',
+    shift_type: 'Both Shifts',
     description: ''
   });
 
@@ -38,8 +41,10 @@ export default function ChecklistsPage() {
   const [itemCompletions, setItemCompletions] = useState({});
 
   useEffect(() => {
-    loadTemplates();
-  }, []);
+    if (selectedLocation) {
+      loadTemplates();
+    }
+  }, [selectedLocation]);
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -56,10 +61,17 @@ export default function ChecklistsPage() {
   const loadTemplates = async () => {
     setLoading(true);
     try {
+      if (!selectedLocation) {
+        setTemplates([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('checklist_templates')
         .select('*')
         .eq('is_active', true)
+        .or(`location_id.eq.${selectedLocation.id},scope_type.eq.company`)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -112,10 +124,21 @@ export default function ChecklistsPage() {
       return;
     }
 
+    if (!selectedLocation) {
+      toast.error('Please select a location first');
+      return;
+    }
+
     try {
+      const templateData = {
+        ...newTemplate,
+        scope_type: 'location',
+        location_id: selectedLocation.id
+      };
+
       const { data, error } = await supabase
         .from('checklist_templates')
-        .insert([newTemplate])
+        .insert([templateData])
         .select()
         .single();
 
@@ -126,6 +149,7 @@ export default function ChecklistsPage() {
         name: '',
         checklist_type: 'opening',
         area: 'Kitchen',
+        shift_type: 'Both Shifts',
         description: ''
       });
       await loadTemplates();
