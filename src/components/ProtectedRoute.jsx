@@ -7,10 +7,37 @@ export default function ProtectedRoute({ children }) {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    const checkSession = async () => {
+      try {
+        // Add timeout to getSession call
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session check timeout')), 3000)
+        );
+
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+        setSession(session);
+      } catch (error) {
+        console.log('ProtectedRoute: Session check timed out, checking localStorage...');
+        // Try to recover from localStorage
+        const storedSession = localStorage.getItem('supabase.auth.token');
+        if (storedSession) {
+          try {
+            const parsed = JSON.parse(storedSession);
+            if (parsed?.currentSession) {
+              console.log('ProtectedRoute: ✅ Recovered session from localStorage');
+              setSession(parsed.currentSession);
+            }
+          } catch (e) {
+            console.error('Failed to parse stored session:', e);
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
 
     const {
       data: { subscription },
