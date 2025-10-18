@@ -55,18 +55,38 @@ export function UserProvider({ children }) {
       setLoading(true);
       console.log('Loading user data...');
 
+      // Try to get session with a shorter timeout
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Session fetch timeout after 10s')), 10000)
+        setTimeout(() => reject(new Error('Session fetch timeout after 3s')), 3000)
       );
 
-      const { data: { session }, error: sessionError } = await Promise.race([
-        sessionPromise,
-        timeoutPromise
-      ]).catch(error => {
-        console.error('Session fetch failed:', error);
-        return { data: { session: null }, error };
-      });
+      let session = null;
+      let sessionError = null;
+
+      try {
+        const result = await Promise.race([sessionPromise, timeoutPromise]);
+        session = result.data?.session;
+        sessionError = result.error;
+      } catch (timeoutError) {
+        console.warn('Session fetch timed out, trying fallback...', timeoutError);
+
+        // Fallback: Try to get user from localStorage (where Supabase stores session)
+        try {
+          const storageKey = `sb-${supabase.supabaseUrl.split('//')[1].split('.')[0]}-auth-token`;
+          const storedSession = localStorage.getItem(storageKey);
+
+          if (storedSession) {
+            const parsed = JSON.parse(storedSession);
+            if (parsed?.access_token && parsed?.user) {
+              console.log('✅ Recovered session from localStorage');
+              session = parsed;
+            }
+          }
+        } catch (fallbackError) {
+          console.error('Fallback session recovery failed:', fallbackError);
+        }
+      }
 
       if (sessionError) {
         console.error('Session error:', sessionError);
