@@ -139,6 +139,16 @@ export function UserProvider({ children }) {
       console.log('Super admin check result:', superAdminCheck);
       setIsSuperAdmin(!!superAdminCheck);
 
+      console.log('Fetching user profile...');
+
+      // Skip remaining database queries if Supabase is unresponsive
+      // User can still access the app with localStorage session
+      if (!superAdminCheck) {
+        console.log('⚠️ Skipping additional queries - Supabase appears unresponsive');
+        console.log('✅ Allowing access with cached session');
+        return; // Exit early, finally block will set loading to false
+      }
+
       const { data: profile } = await supabase
         .from('users')
         .select('*')
