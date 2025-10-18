@@ -107,6 +107,9 @@ export function UserProvider({ children }) {
 
       console.log('Checking super admin status...');
 
+      // TEMPORARY WORKAROUND: Grant super admin to will@w-j-lander.uk when Supabase is unresponsive
+      const isFallbackSuperAdmin = session.user.email === 'will@w-j-lander.uk';
+
       // Add timeout to super admin check
       const superAdminPromise = supabase
         .from('super_admins')
@@ -132,8 +135,13 @@ export function UserProvider({ children }) {
         }
       } catch (err) {
         console.warn('Super admin check failed or timed out:', err.message);
-        // Default to non-super-admin on timeout/error
-        superAdminCheck = null;
+        // Use fallback super admin if database is unresponsive
+        if (isFallbackSuperAdmin) {
+          console.log('🔧 Using fallback super admin access for:', session.user.email);
+          superAdminCheck = { user_id: session.user.id, email: session.user.email };
+        } else {
+          superAdminCheck = null;
+        }
       }
 
       console.log('Super admin check result:', superAdminCheck);
@@ -146,6 +154,35 @@ export function UserProvider({ children }) {
       if (!superAdminCheck) {
         console.log('⚠️ Skipping additional queries - Supabase appears unresponsive');
         console.log('✅ Allowing access with cached session');
+        return; // Exit early, finally block will set loading to false
+      }
+
+      // If using fallback super admin due to connectivity issues, provide defaults
+      if (isFallbackSuperAdmin && superAdminCheck.user_id === session.user.id) {
+        console.log('🔧 Setting up fallback super admin environment');
+
+        // Set default location
+        const fallbackLocation = {
+          id: 'fallback-location',
+          location_name: 'Oswestry',
+          created_at: new Date().toISOString()
+        };
+
+        setUserLocations([fallbackLocation]);
+        setSelectedLocation(fallbackLocation);
+
+        // Grant all permissions for super admin
+        const allPermissions = [
+          'view_deployment', 'edit_deployment', 'delete_deployment',
+          'view_staff', 'edit_staff', 'delete_staff',
+          'view_schedule', 'edit_schedule', 'delete_schedule',
+          'view_settings', 'edit_settings',
+          'view_reports', 'export_data',
+          'manage_users', 'manage_locations', 'super_admin'
+        ];
+
+        setUserPermissions(allPermissions);
+        console.log('✅ Fallback super admin setup complete');
         return; // Exit early, finally block will set loading to false
       }
 
