@@ -105,17 +105,38 @@ export function UserProvider({ children }) {
       console.log('User authenticated:', session.user.email);
       setCurrentUser(session.user);
 
-      const { data: superAdminCheck, error: superAdminError } = await supabase
+      console.log('Checking super admin status...');
+
+      // Add timeout to super admin check
+      const superAdminPromise = supabase
         .from('super_admins')
         .select('*')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
-      if (superAdminError) {
-        console.error('Error checking super admin status:', superAdminError);
+      const adminCheckTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Super admin check timeout')), 5000)
+      );
+
+      let superAdminCheck = null;
+      try {
+        const { data, error: superAdminError } = await Promise.race([
+          superAdminPromise,
+          adminCheckTimeout
+        ]);
+
+        if (superAdminError) {
+          console.error('Error checking super admin status:', superAdminError);
+        } else {
+          superAdminCheck = data;
+        }
+      } catch (err) {
+        console.warn('Super admin check failed or timed out:', err.message);
+        // Default to non-super-admin on timeout/error
+        superAdminCheck = null;
       }
 
-      console.log('Super admin check:', superAdminCheck);
+      console.log('Super admin check result:', superAdminCheck);
       setIsSuperAdmin(!!superAdminCheck);
 
       const { data: profile } = await supabase
