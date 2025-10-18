@@ -76,8 +76,8 @@ export default function UserManagement() {
       return;
     }
 
-    if (newUser.password.length < 12) {
-      toast.error('Password must be at least 12 characters');
+    if (newUser.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
 
