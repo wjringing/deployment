@@ -65,7 +65,7 @@ const DeploymentPage = ({
       const dayOfWeek = new Date(selectedDate).getDay();
 
       const { data: checklists, error } = await supabase
-        .from('checklists')
+        .from('checklist_templates')
         .select(`
           *,
           checklist_items (
@@ -90,8 +90,8 @@ const DeploymentPage = ({
       const printWindow = window.open('', '_blank');
       const checklistsHTML = checklists.map(checklist => `
         <div style="page-break-after: always; margin-bottom: 20px;">
-          <h2>${checklist.title}</h2>
-          <p><strong>Type:</strong> ${checklist.checklist_type} | <strong>Shift:</strong> ${checklist.shift_type}</p>
+          <h2>${checklist.name}</h2>
+          <p><strong>Type:</strong> ${checklist.checklist_type} | <strong>Shift:</strong> ${checklist.shift_type} | <strong>Area:</strong> ${checklist.area}</p>
           <p><strong>Date:</strong> ${formatDate(selectedDate)}</p>
           ${checklist.description ? `<p>${checklist.description}</p>` : ''}
           <ul style="list-style: none; padding: 0;">
@@ -102,6 +102,8 @@ const DeploymentPage = ({
                   <input type="checkbox" style="margin-right: 10px;" />
                   ${item.item_text}
                   ${item.is_required ? '<span style="color: red;"> *</span>' : ''}
+                  ${item.is_critical ? '<span style="color: red; font-weight: bold;"> [CRITICAL]</span>' : ''}
+                  ${item.estimated_minutes ? `<span style="color: #666; font-size: 0.9em;"> (~${item.estimated_minutes} min)</span>` : ''}
                 </li>
               `).join('')}
           </ul>
