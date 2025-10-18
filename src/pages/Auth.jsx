@@ -16,20 +16,44 @@ export default function Auth() {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate('/');
-      }
-    });
+    checkSessionAndRedirect();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        navigate('/');
+        await redirectBasedOnRole(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  async function checkSessionAndRedirect() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await redirectBasedOnRole(session.user.id);
+    }
+  }
+
+  async function redirectBasedOnRole(userId) {
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('is_super_admin_cache, preferred_landing_page')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile?.is_super_admin_cache) {
+        const landingPage = profile.preferred_landing_page || '/admin';
+        navigate(landingPage);
+      } else {
+        const landingPage = profile?.preferred_landing_page || '/';
+        navigate(landingPage);
+      }
+    } catch (error) {
+      console.error('Error redirecting user:', error);
+      navigate('/');
+    }
+  }
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -57,7 +81,7 @@ export default function Auth() {
 
         toast.success('Account created! Please check your email to verify your account.');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -65,6 +89,10 @@ export default function Auth() {
         if (error) throw error;
 
         toast.success('Logged in successfully!');
+
+        if (data?.user) {
+          await redirectBasedOnRole(data.user.id);
+        }
       }
     } catch (error) {
       toast.error(error.message || 'Authentication failed');

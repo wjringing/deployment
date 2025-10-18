@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin, Upload, Star, Link2, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2, Settings, Users, Target, Clock, Save, ArrowRight, MapPin, Upload, Star, Link2, Edit2, Check, X, User } from 'lucide-react';
 import StaffCsvImporter from './StaffCsvImporter';
 import StaffDefaultPositionsManager from './StaffDefaultPositionsManager';
 import PositionRelationshipsManager from './PositionRelationshipsManager';
+import UserPreferencesSection from './UserPreferencesSection';
 import { supabase } from '../lib/supabase';
 
 const SettingsPage = ({
@@ -83,7 +84,18 @@ const SettingsPage = ({
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('preferences')}
+            className={`${
+              activeTab === 'preferences'
+                ? 'border-red-500 text-red-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+          >
+            <User className="w-4 h-4" />
+            Preferences
+          </button>
           <button
             onClick={() => setActiveTab('general')}
             className={`${
@@ -120,7 +132,9 @@ const SettingsPage = ({
         </nav>
       </div>
 
-      {activeTab === 'relationships' ? (
+      {activeTab === 'preferences' ? (
+        <UserPreferencesSection />
+      ) : activeTab === 'relationships' ? (
         <PositionRelationshipsManager />
       ) : activeTab === 'defaults' ? (
         <StaffDefaultPositionsManager />

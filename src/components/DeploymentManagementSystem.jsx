@@ -31,7 +31,7 @@ import { DefaultTargetsManager } from '../utils/defaultTargets';
 import { Plus, Trash2, Clock, Users, Calendar, Settings, Save, Download, TrendingUp, FileText, Copy, CalendarDays, Edit2, LogOut, X, CropIcon as DragDropIcon, GripVertical, Target, MapPin, ChefHat, Store, UserCheck, Chrome as Broom, AlertCircle, CheckCircle, Shield, Lock, UserX, Upload, Award, Link as LinkIcon, CheckSquare, MessageSquare, Navigation, Coffee, Calculator, BarChart3, Menu, ChevronDown, BookOpen } from 'lucide-react';
 
 const DeploymentManagementSystem = () => {
-  const { isSuperAdmin, selectedLocation, userLocations, switchLocation, hasPermission } = useUser();
+  const { isSuperAdmin, selectedLocation, userLocations, switchLocation, hasPermission, canAccessMultipleLocations } = useUser();
   const [showLocationSwitcher, setShowLocationSwitcher] = useState(false);
 
   const handleLogout = async () => {
@@ -841,7 +841,7 @@ const DeploymentManagementSystem = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              {userLocations.length > 1 && (
+              {canAccessMultipleLocations() && userLocations.length > 1 ? (
                 <div className="relative">
                   <button
                     onClick={() => setShowLocationSwitcher(!showLocationSwitcher)}
@@ -874,6 +874,14 @@ const DeploymentManagementSystem = () => {
                       ))}
                     </div>
                   )}
+                </div>
+              ) : selectedLocation && (
+                <div
+                  className="px-3 py-2 rounded-lg bg-gray-50 flex items-center gap-2 text-sm cursor-help"
+                  title="Your access is limited to this location"
+                >
+                  <Store className="w-4 h-4 text-gray-500" />
+                  <span className="hidden md:inline text-gray-700">{selectedLocation.location_name}</span>
                 </div>
               )}
 

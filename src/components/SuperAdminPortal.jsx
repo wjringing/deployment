@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, MapPin, Shield, BarChart3, Settings, FileText, ChevronRight } from 'lucide-react';
+import { Users, MapPin, Shield, BarChart3, Settings, FileText, ChevronRight, LayoutDashboard } from 'lucide-react';
 import UserManagement from './admin/UserManagement';
 import LocationManagement from './admin/LocationManagement';
 import PermissionManagement from './admin/PermissionManagement';
@@ -11,6 +12,7 @@ import AuditLogs from './admin/AuditLogs';
 
 export default function SuperAdminPortal() {
   const { isSuperAdmin, userLocations } = useUser();
+  const navigate = useNavigate();
   const [activePage, setActivePage] = useState('dashboard');
 
   if (!isSuperAdmin) {
@@ -55,6 +57,14 @@ export default function SuperAdminPortal() {
               <p className="text-sm text-gray-500">System-wide management and control</p>
             </div>
             <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                View Deployment System
+              </Button>
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-700">
                   {userLocations.length} {userLocations.length === 1 ? 'Location' : 'Locations'}
