@@ -14,17 +14,6 @@ export const useSupabaseData = () => {
 
   // Load initial data
   useEffect(() => {
-    // Test Supabase connection
-    console.log('🔌 Testing Supabase connection...');
-    console.log('📍 Supabase URL:', supabase.supabaseUrl);
-    console.log('🔑 Supabase Key (first 20 chars):', supabase.supabaseKey?.substring(0, 20) + '...');
-    
-    // Test a simple query to verify connection
-    supabase.from('deployments').select('count', { count: 'exact', head: true })
-      .then(({ count, error }) => {
-        console.log('🧪 Connection test result:', { count, error });
-      });
-    
     loadAllData();
   }, []);
 

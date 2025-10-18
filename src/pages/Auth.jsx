@@ -15,23 +15,21 @@ export default function Auth() {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    checkSessionAndRedirect();
+    let isMounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && isMounted) {
         await redirectBasedOnRole(session.user.id);
       }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  async function checkSessionAndRedirect() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await redirectBasedOnRole(session.user.id);
     }
-  }
+
+    checkSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   async function redirectBasedOnRole(userId) {
     try {

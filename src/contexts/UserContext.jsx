@@ -15,8 +15,12 @@ export function UserProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+    let isInitializing = false;
 
     async function initAuth() {
+      if (isInitializing) return;
+      isInitializing = true;
+
       try {
         await loadUserData();
       } catch (error) {
@@ -24,13 +28,23 @@ export function UserProvider({ children }) {
         if (mounted) {
           setLoading(false);
         }
+      } finally {
+        isInitializing = false;
       }
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isInitializing && currentUser) {
+        return;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+      if (!mounted || isInitializing) return;
 
       if (event === 'SIGNED_IN' && session) {
         await loadUserData();
@@ -48,6 +62,7 @@ export function UserProvider({ children }) {
 
     return () => {
       mounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       subscription.unsubscribe();
     };
   }, []);
@@ -159,10 +174,12 @@ export function UserProvider({ children }) {
         }
       }
 
-      await supabase
+      supabase
         .from('users')
         .update({ last_login: new Date().toISOString() })
-        .eq('id', session.user.id);
+        .eq('id', session.user.id)
+        .then(() => {})
+        .catch(() => {});
 
     } catch (error) {
       console.error('Error loading user data:', error);

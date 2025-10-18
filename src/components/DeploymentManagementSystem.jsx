@@ -3,9 +3,6 @@ import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useUser } from '../contexts/UserContext';
 import { AccessControlManager } from '../utils/accessControl';
-import GDPRComplianceManager from '../utils/gdprCompliance';
-import GDPRPrivacyCenter from './GDPRPrivacyCenter';
-import GDPRConsentBanner from './GDPRConsentBanner';
 import DragDropDeployment from './DragDropDeployment';
 import DeploymentPage from './DeploymentPage';
 import SettingsPage from './SettingsPage';
@@ -72,7 +69,6 @@ const DeploymentManagementSystem = () => {
 
   // Local UI state with specific naming
   const [accessControl] = useState(new AccessControlManager());
-  const [gdprManager] = useState(new GDPRComplianceManager(supabase));
   const [defaultTargetsManager] = useState(new DefaultTargetsManager());
   const [uiLoading, setUiLoading] = useState(false);
   const [uiError, setUiError] = useState('');
@@ -80,7 +76,6 @@ const DeploymentManagementSystem = () => {
   const [pageProtectionStatus, setPageProtectionStatus] = useState({
     settingsLocked: false
   });
-  const [showPrivacyCenter, setShowPrivacyCenter] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -716,10 +711,6 @@ const DeploymentManagementSystem = () => {
     setPageProtectionStatus(status);
   };
 
-  const handleConsentGiven = (consents) => {
-    console.log('User consent recorded:', consents);
-    // Handle consent preferences
-  };
 
   const handleUnlockRequest = (pageName) => {
     // This would typically require admin authorization
@@ -1188,27 +1179,8 @@ const DeploymentManagementSystem = () => {
           />
         )}
         
-        {currentPage === 'privacy' && (
-          <GDPRPrivacyCenter
-            currentUser={currentUser}
-            onClose={() => setCurrentPage('deployment')}
-          />
-        )}
       </div>
       
-      {/* GDPR Privacy Center Modal */}
-      {showPrivacyCenter && (
-        <GDPRPrivacyCenter
-          currentUser={currentUser}
-          onClose={() => setShowPrivacyCenter(false)}
-        />
-      )}
-      
-      {/* GDPR Consent Banner */}
-      <GDPRConsentBanner
-        currentUser={currentUser}
-        onConsentGiven={handleConsentGiven}
-      />
     </div>
   );
 };
